@@ -88,7 +88,7 @@
 
 <div class="container">
     <h2>Search Data from CSV</h2>
-    <div id="status" class="status">Loading site components...</div>
+    <div id="status" class="status">Loading dataset...</div>
     
     <input type="text" id="searchInput" placeholder="Type here to search...">
     
@@ -105,15 +105,27 @@
 <script>
     const csvUrl = 'DATA.CSV'; 
     let csvData = [];
-
-    // 1. קריאה ישירה של הפרמטר מה-URL מיד עם ריצת הסקריפט (בדיוק כמו בקוד שלך)
-    const urlParams = new URLSearchParams(window.location.search);
-    const initialQuery = urlParams.get('q') || urlParams.get('Q') || '';
-    
-    // השתלת הערך בתיבה באופן מיידי כדי שהמשתמש יראה אותו ישר
     const searchInput = document.getElementById('searchInput');
+
+    // פונקציית חילוץ טקסט ידנית ואגרסיבית מה-URL (עוקפת את כל מנגנוני הדפדפן)
+    function getQueryFromURL() {
+        const href = window.location.href;
+        // מחפש q= או Q= בתוך כל הכתובת הגולמית
+        const match = href.match(/[?&][qQ]=([^&#]+)/);
+        if (match && match[1]) {
+            try {
+                return decodeURIComponent(match[1].replace(/\+/g, ' ')).trim();
+            } catch (e) {
+                return match[1].trim();
+            }
+        }
+        return '';
+    }
+
+    // שליפת הערך ושתילתו מיד בתיבה לפני כל פעולה אחרת
+    const initialQuery = getQueryFromURL();
     if (initialQuery) {
-        searchInput.value = decodeURIComponent(initialQuery).trim();
+        searchInput.value = initialQuery;
     }
 
     function cleanString(str) {
@@ -157,16 +169,16 @@
             const cell = rowArray[i];
             const match = cell.match(urlRegex);
             if (match) {
-                return match.trim();
+                return match[0].trim();
             }
         }
         return null;
     }
 
-    // 2. טעינת קובץ ה-CSV מהשרת
+    // טעינת הקובץ והפעלת הסינון
     fetch(csvUrl)
         .then(response => {
-            if (!response.ok) throw new Error('DATA.CSV file not found');
+            if (!response.ok) throw new Error('DATA.CSV footprint missing');
             return response.text();
         })
         .then(text => {
@@ -176,16 +188,14 @@
             csvData = lines.slice(1).map(line => parseCSVRow(line));
             document.getElementById('status').innerText = `Data loaded successfully.`;
             
-            // המערכת מאזינה להקלדות ידניות בשוטף
             searchInput.addEventListener('input', () => {
                 filterData();
                 updateURLQuery(searchInput.value);
             });
 
-            // 3. הרצת החיפוש האוטומטי באופן מיידי עם סיום טעינת הנתונים, לפי מה שכבר שתלנו בתיבה
+            // הרצה מיידית של החיפוש אם יש טקסט בתיבה
             if (searchInput.value) {
                 filterData();
-                updateURLQuery(searchInput.value); // מוודא סינכרון של ה-URL ל-q קטנה
             }
         })
         .catch(error => {
