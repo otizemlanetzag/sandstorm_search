@@ -8,20 +8,20 @@
         body {
             font-family: Arial, sans-serif;
             margin: 20px;
-            background-color: #f7f4eb; /* Soft sand background */
-            color: #4a3e3d; /* Dark brown-gray text */
+            background-color: #f7f4eb; 
+            color: #4a3e3d; 
         }
         .container {
             max-width: 600px;
             margin: 40px auto;
-            background: #fffdf9; /* Warm cream container background */
+            background: #fffdf9; 
             padding: 25px;
             border-radius: 12px;
-            box-shadow: 0 4px 12px rgba(180, 165, 140, 0.15); /* Soft sandy shadow */
+            box-shadow: 0 4px 12px rgba(180, 165, 140, 0.15); 
             border: 1px solid #e8dec9;
         }
         h2 {
-            color: #705e49; /* Earthy brown for headings */
+            color: #705e49; 
             margin-top: 0;
             margin-bottom: 20px;
             text-align: left;
@@ -37,7 +37,7 @@
             background-color: #faf7f0;
             color: #4a3e3d;
             outline: none;
-            text-align: left; /* Left align text input */
+            text-align: left; 
             transition: border-color 0.2s, box-shadow 0.2s;
         }
         input[type="text"]:focus {
@@ -52,10 +52,10 @@
         th, td {
             border: 1px solid #ebdcb9;
             padding: 14px;
-            text-align: left; /* Aligned left for English */
+            text-align: left; 
         }
         th {
-            background-color: #efe6cf; /* Soft sand table header */
+            background-color: #efe6cf; 
             color: #61503b;
             font-weight: bold;
         }
@@ -94,10 +94,9 @@
 </div>
 
 <script>
-    const csvUrl = 'DATA.CSV'; // Path to your CSV file
+    const csvUrl = 'DATA.CSV'; 
     let csvData = [];
 
-    // Function to parse a CSV row into an array
     function parseCSVRow(text) {
         let p = '', r = [];
         let q = false;
@@ -111,7 +110,6 @@
         return r;
     }
 
-    // Traditional 10-word text limiter
     function limitToTenWords(text) {
         const words = text.split(/\s+/).filter(w => w.length > 0);
         if (words.length > 10) {
@@ -120,7 +118,6 @@
         return text;
     }
 
-    // Function to check if a cell contains a URL or Wikipedia link
     function containsUrl(text) {
         const lowerText = text.toLowerCase();
         return lowerText.includes('http://') || 
@@ -130,17 +127,21 @@
                lowerText.includes('.com');
     }
 
-    // Function to extract the actual URL from a complex cell (e.g., after the '|')
+    // התיקון כאן: הפונקציה מבטיחה שהכתובת תמיד תהיה אבסולוטית ותתחיל ב-https
     function extractRealUrl(text) {
+        let url = text.trim();
         if (text.includes('|')) {
             const parts = text.split('|');
             const urlPart = parts.find(p => p.includes('http://') || p.includes('https://') || p.includes('wikipedia.org'));
-            if (urlPart) return urlPart.trim();
+            if (urlPart) url = urlPart.trim();
         }
-        return text.trim();
+        
+        if (!url.startsWith('http://') && !url.startsWith('https://')) {
+            url = 'https://' + url;
+        }
+        return url;
     }
 
-    // Fetch CSV file from server
     fetch(csvUrl)
         .then(response => {
             if (!response.ok) {
@@ -152,10 +153,8 @@
             const lines = text.split('\n').map(line => line.trim()).filter(line => line.length > 0);
             if (lines.length === 0) return;
 
-            // Save data excluding the first header row
             csvData = lines.slice(1).map(line => parseCSVRow(line));
 
-            // Enable search input
             document.getElementById('status').innerText = `Data loaded successfully. Type to start searching.`;
             const searchInput = document.getElementById('searchInput');
             searchInput.disabled = false;
@@ -166,7 +165,6 @@
             document.getElementById('status').style.color = '#b33939'; 
         });
 
-    // Render matched cells into the table
     function renderResults(results) {
         const body = document.getElementById('tableBody');
         body.innerHTML = ''; 
@@ -183,7 +181,6 @@
             td.textContent = limitToTenWords(item.matchedText); 
             tr.appendChild(td);
             
-            // Extract the URL and navigate on click
             tr.addEventListener('click', () => {
                 const rawUrlCell = item.originalRow.find(cell => containsUrl(cell));
                 if (rawUrlCell) {
@@ -198,7 +195,6 @@
         });
     }
 
-    // Filter cells while hiding link/URL cells from results
     function filterData() {
         const query = document.getElementById('searchInput').value.toLowerCase().trim();
         
@@ -211,7 +207,6 @@
         
         csvData.forEach(row => {
             row.forEach((cell) => {
-                // Block URLs from appearing as text search results
                 if (containsUrl(cell)) return; 
 
                 if (cell.toLowerCase().includes(query)) {
