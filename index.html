@@ -107,20 +107,28 @@
     let csvData = [];
     const searchInput = document.getElementById('searchInput');
 
-    // מנגנון חדש: קורא את מילת החיפוש ישירות מתוך הסולמית (#) בכתובת האתר
+    // פונקציה לשליפת המילה מתוך הסולמית
     function getQueryFromHash() {
-        const hash = window.location.hash; // מחזיר למשל: #wiki או #WIKIPEDIA
+        const hash = window.location.hash;
         if (hash && hash.length > 1) {
-            return decodeURIComponent(hash.substring(1)).trim(); // מסיר את סימן ה-# ומפענח
+            return decodeURIComponent(hash.substring(1)).trim();
         }
         return '';
     }
 
-    // 1. שתילת הערך בתיבה מהסולמית מיד עם עליית הדף (עוקף שרת לחלוטין)
-    const initialQuery = getQueryFromHash();
-    if (initialQuery) {
-        searchInput.value = initialQuery;
+    // פונקציה שמסננת ומעדכנת את התצוגה לפי מה שיש בתיבה
+    function syncSearchFromHash() {
+        const query = getQueryFromHash();
+        if (query) {
+            searchInput.value = query;
+            if (csvData.length > 0) {
+                filterData();
+            }
+        }
     }
+
+    // 1. קריאה ראשונית של הסולמית לפני טעינת ה-CSV
+    searchInput.value = getQueryFromHash();
 
     function cleanString(str) {
         if (!str) return '';
@@ -182,13 +190,13 @@
             csvData = lines.slice(1).map(line => parseCSVRow(line));
             document.getElementById('status').innerText = `Data loaded successfully.`;
             
-            // האזנה להקלדות ידניות ועדכון הסולמית בהתאם
+            // האזנה להקלדות ידניות בתיבה
             searchInput.addEventListener('input', () => {
                 filterData();
                 updateURLHash(searchInput.value);
             });
 
-            // 3. הפעלת החיפוש האוטומטי אם נשתל ערך מהסולמית
+            // 3. הרצה אוטומטית לפי מה שנטען מהכתובת בתחילה
             if (searchInput.value) {
                 filterData();
             }
@@ -253,15 +261,17 @@
         renderResults(matchedItems);
     }
 
-    // מעדכן את הסולמית בכתובת האתר בזמן ההקלדה ללא רענון עמוד
     function updateURLHash(query) {
         const cleanQuery = cleanString(query);
         if (cleanQuery !== '') {
             window.history.replaceState({}, '', '#' + cleanQuery); 
         } else {
-            window.history.replaceState({}, '', window.location.pathname); // מנקה את הסולמית אם ריק
+            window.history.replaceState({}, '', window.location.pathname); 
         }
     }
+
+    // 4. מאזין קשיח לשינויים בכתובת האתר - יפעיל את הסינון בכל פעם שהסולמית זזה
+    window.addEventListener('hashchange', syncSearchFromHash);
 </script>
 
 </body>
