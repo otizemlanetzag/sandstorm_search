@@ -90,7 +90,10 @@
     <h2>Search Data from CSV</h2>
     <div id="status" class="status">Loading data...</div>
     
-    <input type="text" id="searchInput" placeholder="Type here and press ENTER to search...">
+    <!-- עטיפת תיבת החיפוש בטופס כדי לחסום לחלוטין הקלדה שוטפת ולחייב לחיצת ENTER -->
+    <form id="searchForm" action="#" onsubmit="return false;">
+        <input type="text" id="searchInput" placeholder="Type here and press ENTER to search...">
+    </form>
     
     <table id="resultsTable">
         <thead>
@@ -106,18 +109,19 @@
     const csvUrl = 'DATA.CSV'; 
     let csvData = [];
     const searchInput = document.getElementById('searchInput');
+    const searchForm = document.getElementById('searchForm');
 
-    // חילוץ ישיר, פשוט ועיוור מהכתובת ללא תלות בפונקציות פנימיות של דפדפן
+    // חילוץ ישיר מהכתובת
     function getUrlParameter() {
         const urlString = window.location.href;
         const match = urlString.match(/[?&][qQ]=([^&#]+)/);
         if (match) {
-            return decodeURIComponent(match[1].replace(/\+/g, ' ')).trim();
+            return decodeURIComponent(match.replace(/\+/g, ' ')).trim();
         }
         return '';
     }
 
-    // שתילת הערך בתיבה מיידית כדי למנוע קפיצות ויזואליות
+    // שתילת ערך התחלתי
     const initialParam = getUrlParameter();
     if (initialParam) {
         searchInput.value = initialParam;
@@ -164,7 +168,7 @@
             const cell = rowArray[i];
             const match = cell.match(urlRegex);
             if (match) {
-                return match[0].trim();
+                return match.trim();
             }
         }
         return null;
@@ -183,15 +187,14 @@
             csvData = lines.slice(1).map(line => parseCSVRow(line));
             document.getElementById('status').innerText = `Data loaded successfully.`;
             
-            // שינוי מרכזי: הקשבה רק למקש ENTER (מניעת סינון בזמן הקלדה)
-            searchInput.addEventListener('keydown', (event) => {
-                if (event.key === 'Enter') {
-                    filterData();
-                    updateURLQuery(searchInput.value);
-                }
+            // המנגנון החסין: האזנה אך ורק לשליחת הטופס (שקורה רק בלחיצת ENTER)
+            searchForm.addEventListener('submit', (event) => {
+                event.preventDefault(); // מניעת רענון הדף המסורתי של טפסים
+                filterData();
+                updateURLQuery(searchInput.value);
             });
 
-            // הפעלת החיפוש האוטומטי בטעינה ראשונית בלבד אם נשתל ערך מהכתובת
+            // הפעלת החיפוש האוטומטי רק אם העמוד נפתח ישירות עם קישור מוכן
             if (searchInput.value) {
                 filterData();
             }
