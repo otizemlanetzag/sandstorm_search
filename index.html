@@ -1,27 +1,27 @@
 <!DOCTYPE html>
-<html lang="he" dir="rtl">
+<html lang="en" dir="ltr">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>חיפוש ערכים בקובץ CSV</title>
+    <title>CSV Search Engine</title>
     <style>
         body {
             font-family: Arial, sans-serif;
             margin: 20px;
-            background-color: #f7f4eb; /* צבע חול בהיר מאוד */
-            color: #4a3e3d; /* צבע טקסט חום-אפרפר כהה */
+            background-color: #f7f4eb; /* Soft sand background */
+            color: #4a3e3d; /* Dark brown-gray text for high readability */
         }
         .container {
             max-width: 600px;
             margin: 40px auto;
-            background: #fffdf9; /* צבע שמנת חם */
+            background: #fffdf9; /* Warm cream container background */
             padding: 25px;
             border-radius: 12px;
-            box-shadow: 0 4px 12px rgba(180, 165, 140, 0.15); /* צל רך בגוון חול */
+            box-shadow: 0 4px 12px rgba(180, 165, 140, 0.15); /* Soft sandy shadow */
             border: 1px solid #e8dec9;
         }
         h2 {
-            color: #705e49; /* חום אדמה רך */
+            color: #705e49; /* Earthy brown for headings */
             margin-top: 0;
             margin-bottom: 20px;
         }
@@ -50,10 +50,10 @@
         th, td {
             border: 1px solid #ebdcb9;
             padding: 14px;
-            text-align: right;
+            text-align: left; /* Aligned left for English */
         }
         th {
-            background-color: #efe6cf;
+            background-color: #efe6cf; /* Soft sand table header */
             color: #61503b;
             font-weight: bold;
         }
@@ -75,15 +75,15 @@
 <body>
 
 <div class="container">
-    <h2>חיפוש ערכים מתוך קובץ CSV</h2>
-    <div id="status" class="status">טוען נתונים...</div>
+    <h2>Search Data from CSV</h2>
+    <div id="status" class="status">Loading data...</div>
     
-    <input type="text" id="searchInput" placeholder="הקלד כאן כדי לחפש..." disabled>
+    <input type="text" id="searchInput" placeholder="Type here to search..." disabled>
     
     <table id="resultsTable">
         <thead>
             <tr>
-                <th>תוצאות החיפוש</th>
+                <th>Search Results</th>
             </tr>
         </thead>
         <tbody id="tableBody"></tbody>
@@ -91,10 +91,10 @@
 </div>
 
 <script>
-    const csvUrl = 'DATA.CSV'; // נתיב לקובץ ה-CSV שלך
+    const csvUrl = 'DATA.CSV'; // Path to your CSV file
     let csvData = [];
 
-    // פונקציה לפירוק שורת CSV למערך
+    // Function to parse a CSV row into an array
     function parseCSVRow(text) {
         let p = '', r = [];
         let q = false;
@@ -108,7 +108,7 @@
         return r;
     }
 
-    // חיתוך לפי המנגנון הישן והפשוט של 10 מילים
+    // Traditional 10-word text limiter
     function limitToTenWords(text) {
         const words = text.split(/\s+/).filter(w => w.length > 0);
         if (words.length > 10) {
@@ -117,7 +117,7 @@
         return text;
     }
 
-    // פונקציה חכמה שבודקת האם התא מכיל כתובת אינטרנט או קישור ויקיפדיה
+    // Function to check if a cell contains a URL or Wikipedia link
     function containsUrl(text) {
         const lowerText = text.toLowerCase();
         return lowerText.includes('http://') || 
@@ -127,22 +127,21 @@
                lowerText.includes('.com');
     }
 
-    // פונקציה שמחלצת את הקישור האמיתי מתוך התא המורכב (למשל אחרי ה-|)
+    // Function to extract the actual URL from a complex cell (e.g., after the '|')
     function extractRealUrl(text) {
         if (text.includes('|')) {
             const parts = text.split('|');
-            // מחפש את החלק שמכיל את הכתובת
             const urlPart = parts.find(p => p.includes('http://') || p.includes('https://') || p.includes('wikipedia.org'));
             if (urlPart) return urlPart.trim();
         }
         return text.trim();
     }
 
-    // טעינת הקובץ מהשרת
+    // Fetch CSV file from server
     fetch(csvUrl)
         .then(response => {
             if (!response.ok) {
-                throw new Error('לא ניתן למצוא את הקובץ DATA.CSV או שקיימת שגיאת הרשאות');
+                throw new Error('Unable to find DATA.CSV or permission error occurred');
             }
             return response.text();
         })
@@ -150,25 +149,27 @@
             const lines = text.split('\n').map(line => line.trim()).filter(line => line.length > 0);
             if (lines.length === 0) return;
 
+            // Save data excluding the first header row
             csvData = lines.slice(1).map(line => parseCSVRow(line));
 
-            document.getElementById('status').innerText = `הנתונים נטענו בהצלחה. הקלד כדי לחפש.`;
+            // Enable search input
+            document.getElementById('status').innerText = `Data loaded successfully. Type to start searching.`;
             const searchInput = document.getElementById('searchInput');
             searchInput.disabled = false;
             searchInput.addEventListener('input', filterData);
         })
         .catch(error => {
-            document.getElementById('status').innerText = 'שגיאה: ' + error.message;
-            document.getElementById('status').style.color = '#b33939';
+            document.getElementById('status').innerText = 'Error: ' + error.message;
+            document.getElementById('status').style.color = '#b33939'; // Terracotta red for errors
         });
 
-    // הצגת התאים שנמצאו בטבלה
+    // Render matched cells into the table
     function renderResults(results) {
         const body = document.getElementById('tableBody');
         body.innerHTML = ''; 
         
         if (results.length === 0) {
-            body.innerHTML = `<tr><td style="text-align:center; color:#a69580;">לא נמצאו תוצאות מתאימות</td></tr>`;
+            body.innerHTML = `<tr><td style="text-align:center; color:#a69580;">No matching results found</td></tr>`;
             return;
         }
         
@@ -179,15 +180,14 @@
             td.textContent = limitToTenWords(item.matchedText); 
             tr.appendChild(td);
             
-            // לחיצה תחלץ את הקישור ותנווט אליו
+            // Extract the URL and navigate on click
             tr.addEventListener('click', () => {
-                // מחפש בשורה את התא שמכיל קישור
                 const rawUrlCell = item.originalRow.find(cell => containsUrl(cell));
                 if (rawUrlCell) {
                     const finalUrl = extractRealUrl(rawUrlCell);
                     window.location.href = finalUrl;
                 } else {
-                    alert('לא נמצא קישור תואם עבור תוצאה זו');
+                    alert('No valid link found for this result');
                 }
             });
             
@@ -195,7 +195,7 @@
         });
     }
 
-    // סינון התאים תוך חסימת תאים שמכילים קישורים
+    // Filter cells while hiding link/URL cells from results
     function filterData() {
         const query = document.getElementById('searchInput').value.toLowerCase().trim();
         
@@ -208,7 +208,7 @@
         
         csvData.forEach(row => {
             row.forEach((cell) => {
-                // חסימה: אם התא מכיל כתובת אינטרנט/ויקיפדיה, אל תציג אותו בתוצאות החיפוש
+                // Block URLs from appearing as text search results
                 if (containsUrl(cell)) return; 
 
                 if (cell.toLowerCase().includes(query)) {
