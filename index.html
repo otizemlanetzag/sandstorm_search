@@ -152,8 +152,16 @@
     }
 
     function restoreURLQuery() {
+      // URL parameter names are normally case-sensitive in URLSearchParams.
+      // Accept q, Q, and other casing variants (for example ?Q=hello).
       const params = new URLSearchParams(window.location.search);
-      const query = params.get('q') || params.get('Q') || '';
+      let query = '';
+      for (const [key, value] of params.entries()) {
+        if (key.toLowerCase() === 'q') {
+          query = value;
+          if (key === 'q') break; // Prefer the canonical lowercase parameter if both exist.
+        }
+      }
       searchInput.value = query;
     }
 
