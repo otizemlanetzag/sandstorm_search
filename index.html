@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>חיפוש וניווט בקובץ CSV</title>
+    <title>חיפוש ערכים בקובץ CSV</title>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -11,7 +11,7 @@
             background-color: #f9f9f9;
         }
         .container {
-            max-width: 800px;
+            max-width: 600px;
             margin: 0 auto;
             background: #fff;
             padding: 20px;
@@ -34,19 +34,19 @@
         }
         th, td {
             border: 1px solid #ddd;
-            padding: 10px;
+            padding: 12px;
             text-align: right;
         }
         th {
             background-color: #f2f2f2;
         }
-        /* הפיכת השורות בטבלה לקליקביליות */
+        /* עיצוב התוצאות כאלמנטים לחיצים */
         tbody tr {
             cursor: pointer;
             transition: background-color 0.2s;
         }
         tbody tr:hover {
-            background-color: #e6f7ff; /* צבע רקע במעבר עכבר */
+            background-color: #e6f7ff;
         }
         .status {
             color: #666;
@@ -58,13 +58,17 @@
 <body>
 
 <div class="container">
-    <h2>חיפוש נתונים מתוך קובץ CSV</h2>
+    <h2>חיפוש ערכים מתוך קובץ CSV</h2>
     <div id="status" class="status">טוען נתונים...</div>
     
     <input type="text" id="searchInput" placeholder="הקלד כאן כדי לחפש..." disabled>
     
     <table id="resultsTable">
-        <thead id="tableHeader"></thead>
+        <thead>
+            <tr>
+                <th>תוצאות החיפוש</th>
+            </tr>
+        </thead>
         <tbody id="tableBody"></tbody>
     </table>
 </div>
@@ -72,7 +76,6 @@
 <script>
     const csvUrl = 'DATA.CSV'; // נתיב לקובץ ה-CSV שלך
     let csvData = [];
-    let headers = [];
 
     // פונקציה לפירוק שורת CSV למערך
     function parseCSVRow(text) {
@@ -100,60 +103,44 @@
             const lines = text.split('\n').map(line => line.trim()).filter(line => line.length > 0);
             if (lines.length === 0) return;
 
-            // חילוץ הכותרות (השורה הראשונה)
-            headers = parseCSVRow(lines[0]);
-            
-            // חילוץ שורות הנתונים
-            csvData = lines.slice(0).map(line => parseCSVRow(line));
-
-            // בניית כותרת הטבלה
-            const headerHtml = '<tr>' + headers.map(h => `<th>${h}</th>`).join('') + '</tr>';
-            document.getElementById('tableHeader').innerHTML = headerHtml;
+            // דילוג על שורת הכותרות המקורית ושמירת הנתונים בלבד
+            csvData = lines.slice(1).map(line => parseCSVRow(line));
 
             // הפעלת תיבת החיפוש
-            document.getElementById('status').innerText = `נטענו ${csvData.length} שורות בהצלחה. לחץ על שורה כדי לעבור לקישור.`;
+            document.getElementById('status').innerText = `הנתונים נטענו בהצלחה. הקלד כדי לחפש.`;
             const searchInput = document.getElementById('searchInput');
             searchInput.disabled = false;
             searchInput.addEventListener('input', filterData);
-            
-            // הצגת כל הנתונים בהתחלה
-            renderTable(csvData);
         })
         .catch(error => {
             document.getElementById('status').innerText = 'שגיאה: ' + error.message;
             document.getElementById('status').style.color = 'red';
         });
 
-    // הצגת הנתונים בטבלה
-    function renderTable(data) {
+    // הצגת התאים שנמצאו בטבלה
+    function renderResults(results) {
         const body = document.getElementById('tableBody');
         body.innerHTML = ''; // ניקוי הטבלה
         
-        if (data.length === 0) {
-            body.innerHTML = `<tr><td colspan="${headers.length || 1}" style="text-align:center;">לא נמצאו תוצאות מתאימות</td></tr>`;
+        if (results.length === 0) {
+            body.innerHTML = `<tr><td style="text-align:center; color:#999;">לא נמצאו תוצאות מתאימות</td></tr>`;
             return;
         }
         
-        data.forEach(row => {
+        results.forEach(item => {
             const tr = document.createElement('tr');
+            const td = document.createElement('td');
             
-            // יצירת התאים לכל עמודה בשורה
-            row.forEach(cell => {
-                const td = document.createElement('td');
-                td.textContent = cell;
-                tr.appendChild(td);
-            });
+            td.textContent = item.matchedText; // מציג רק את הטקסט הספציפי שנמצא
+            tr.appendChild(td);
             
-            // הוספת אירוע לחיצה לשורה כולה
+            // הפניה לקישור שבעמודה השנייה (אינדקס 1) של אותה שורה מקורית
             tr.addEventListener('click', () => {
-                const url = row[1]; // עמודה 2 (אינדקס 1 במחשב) היא הקישור
-                if (url && (url.startsWith('http://') || url.startsWith('https://'))) {
-                    window.location.href = url; // פתיחה באותו לשונית. שנה ל-window.open(url, '_blank') אם תרצה לשונית חדשה
-                } else if (url) {
-                    // מקרה שהקישור חלקי או מקומי (למשל page2.html)
+                const url = item.originalRow[1]; 
+                if (url) {
                     window.location.href = url;
                 } else {
-                    alert('לא נמצא קישור תקין בשורה זו');
+                    alert('לא נמצא קישור תואם עבור תוצאה זו');
                 }
             });
             
@@ -161,16 +148,31 @@
         });
     }
 
-    // סינון הנתונים לפי מה שהמשתמש הקליד
+    // סינון ובניית רשימת התאים המתאימים
     function filterData() {
-        const query = document.getElementById('searchInput').value.toLowerCase();
+        const query = document.getElementById('searchInput').value.toLowerCase().trim();
         
-        const filtered = csvData.filter(row => {
-            // בודק אם הערך המחופש קיים באחד מתאי השורה
-            return row.some(cell => cell.toLowerCase().includes(query));
+        // אם תיבת החיפוש ריקה, לא מציגים כלום (או שניתן לשנות שיציג הכל)
+        if (query === '') {
+            renderResults([]);
+            return;
+        }
+        
+        const matchedItems = [];
+        
+        csvData.forEach(row => {
+            row.forEach(cell => {
+                // אם התא מכיל את הטקסט המחופש (ולא מדובר בעמודת הקישור עצמה)
+                if (cell.toLowerCase().includes(query)) {
+                    matchedItems.push({
+                        matchedText: cell,   // הטקסט של התא הבודד להצגה
+                        originalRow: row     // השורה המלאה כדי לשלוף ממנה את הקישור בהמשך
+                    });
+                }
+            });
         });
         
-        renderTable(filtered);
+        renderResults(matchedItems);
     }
 </script>
 
