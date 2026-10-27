@@ -1,200 +1,273 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en" dir="ltr">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="color-scheme" content="light">
-  <title>Sandstorm Search</title>
-  <style>
-    :root { color-scheme: light; font-family: Arial, sans-serif; }
-    * { box-sizing: border-box; }
-    body { margin: 0; padding: 24px; background: #f7f4eb; color: #4a3e3d; }
-    .container { width: min(100%, 760px); margin: 32px auto; padding: clamp(18px, 4vw, 28px); background: #fffdf9; border: 1px solid #e8dec9; border-radius: 14px; box-shadow: 0 4px 18px #b4a58c22; }
-    h1 { margin: 0 0 18px; color: #705e49; font-size: clamp(1.35rem, 4vw, 1.8rem); }
-    #searchInput { display: block; width: 100%; min-width: 0; padding: 13px 14px; margin: 0 0 14px; border: 1px solid #d9ccb4; border-radius: 7px; background: #faf7f0; color: inherit; font-size: 16px; }
-    #searchInput:focus { outline: 2px solid #bfae93; outline-offset: 2px; }
-    .status { margin: 0 0 14px; color: #786b59; font-size: 14px; }
-    .results { display: grid; gap: 9px; }
-    .result { display: block; width: 100%; padding: 14px; border: 1px solid #ebdcb9; border-radius: 8px; color: inherit; background: #fffdf9; text-align: left; overflow-wrap: anywhere; cursor: pointer; }
-    .result:hover, .result:focus-visible { background: #f3ebda; outline-color: #9b815e; }
-    .result-title { display: block; font-weight: 700; margin-bottom: 5px; }
-    .result-url { display: block; color: #6c7956; font-size: 13px; }
-    .empty { padding: 18px; text-align: center; color: #8a7a64; border: 1px dashed #ebdcb9; border-radius: 8px; }
-    @media (max-width: 480px) { body { padding: 12px; } .container { margin: 10px auto; } }
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CSV Search Engine</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            background-color: #f7f4eb; /* Soft sand background */
+            color: #4a3e3d; /* Dark brown-gray text */
+        }
+        .container {
+            max-width: 600px;
+            margin: 40px auto;
+            background: #fffdf9; /* Warm cream container background */
+            padding: 25px;
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(180, 165, 140, 0.15); /* Soft sandy shadow */
+            border: 1px solid #e8dec9;
+        }
+        h2 {
+            color: #705e49; /* Earthy brown for headings */
+            margin-top: 0;
+            margin-bottom: 20px;
+            text-align: left;
+        }
+        input[type="text"] {
+            width: 100%;
+            padding: 12px;
+            margin-bottom: 20px;
+            box-sizing: border-box;
+            border: 1px solid #d9ccb4;
+            border-radius: 6px;
+            font-size: 16px;
+            background-color: #faf7f0;
+            color: #4a3e3d;
+            outline: none;
+            text-align: left; 
+            transition: border-color 0.2s, box-shadow 0.2s;
+        }
+        input[type="text"]:focus {
+            border-color: #bfae93;
+            box-shadow: 0 0 5px rgba(191, 174, 147, 0.4);
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 10px;
+        }
+        th, td {
+            border: 1px solid #ebdcb9;
+            padding: 14px;
+            text-align: left; 
+        }
+        th {
+            background-color: #efe6cf; /* Soft sand table header */
+            color: #61503b;
+            font-weight: bold;
+        }
+        tbody tr {
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+        tbody tr:hover {
+            background-color: #f3ebda; 
+        }
+        .status {
+            color: #8c7b64;
+            font-style: italic;
+            margin-bottom: 15px;
+            font-size: 14px;
+            text-align: left;
+        }
+    </style>
 </head>
 <body>
-  <main class="container">
-    <h1>Sandstorm Search</h1>
-    <p id="status" class="status" role="status" aria-live="polite">Loading search data…</p>
-    <label for="searchInput" class="sr-only"></label>
-    <input id="searchInput" type="search" placeholder="Type here to search…" autocomplete="off" disabled>
-    <section id="results" class="results" aria-label="Search results"></section>
-  </main>
-  <script>
-    'use strict';
-    // Keep DATA.CSV beside this page. CSV is parsed as a complete document so quoted
-    // commas, escaped quotes, and newlines inside quoted fields are handled correctly.
-    const csvUrl = new URL('./DATA.CSV', window.location.href);
-    const searchInput = document.getElementById('searchInput');
-    const statusEl = document.getElementById('status');
-    const resultsEl = document.getElementById('results');
+
+<div class="container">
+    <h2>Search Data from CSV</h2>
+    <div id="status" class="status">Loading data...</div>
+    
+    <input type="text" id="searchInput" placeholder="Type here to search..." disabled>
+    
+    <table id="resultsTable">
+        <thead>
+            <tr>
+                <th>Search Results</th>
+            </tr>
+        </thead>
+        <tbody id="tableBody"></tbody>
+    </table>
+</div>
+
+<script>
+    const csvUrl = 'DATA.CSV'; 
     let csvData = [];
-    let debounceTimer;
 
-    function cleanString(value) {
-      return String(value ?? '').replace(/[\u200B\u00A0]/g, ' ').replace(/\s+/g, ' ').trim();
+    function cleanString(str) {
+        if (!str) return '';
+        return str.toString()
+                  .replace(/[\r\n]+/g, ' ') 
+                  .replace(/[\s\u200B\u00A0]+/g, ' ') 
+                  .trim();
     }
 
-    function parseCSV(text) {
-      const rows = [];
-      let row = [], field = '', quoted = false;
-      for (let i = 0; i < text.length; i++) {
-        const ch = text[i];
-        if (quoted) {
-          if (ch === '"' && text[i + 1] === '"') { field += '"'; i++; }
-          else if (ch === '"') quoted = false;
-          else field += ch;
-        } else if (ch === '"' && field.length === 0) {
-          quoted = true;
-        } else if (ch === ',') {
-          row.push(field); field = '';
-        } else if (ch === '\n') {
-          row.push(field); rows.push(row); row = []; field = '';
-        } else if (ch !== '\r') {
-          field += ch;
+    function parseCSVRow(text) {
+        let p = '', r = [];
+        let q = false;
+        for (let i = 0; i < text.length; i++) {
+            let c = text[i];
+            if (c === '"') { q = !q; }
+            else if (c === ',' && !q) { r.push(cleanString(p)); p = ''; }
+            else { p += c; }
         }
-      }
-      if (field.length || row.length) { row.push(field); rows.push(row); }
-      return rows.map(r => r.map(cleanString)).filter(r => r.some(Boolean));
+        r.push(cleanString(p));
+        return r;
     }
 
-    function getSafeUrl(row) {
-      for (const cell of row) {
-        const candidate = cell.trim();
-        // Accept explicit HTTP(S) URLs only; never navigate to javascript: or data: URLs.
-        const match = candidate.match(/https?:\/\/[^\s"'<>]+/i);
-        if (!match) continue;
-        try {
-          const url = new URL(match[0].replace(/[),.;]+$/, ''));
-          if (url.protocol === 'http:' || url.protocol === 'https:') return url.href;
-        } catch (_) { /* Ignore malformed URLs and continue checking cells. */ }
-      }
-      return null;
-    }
-
-    function displayText(row) {
-      const url = getSafeUrl(row);
-      const searchable = row.filter(cell => !/^https?:\/\//i.test(cell.trim()));
-      const text = searchable.find(cell => cleanString(cell)) || row.find(Boolean) || 'Untitled result';
-      return { title: text.split(/\s+/).slice(0, 12).join(' ') + (text.split(/\s+/).length > 12 ? '…' : ''), url };
-    }
-
-    function renderResults(rows) {
-      resultsEl.replaceChildren();
-      if (!rows.length) {
-        const empty = document.createElement('div');
-        empty.className = 'empty';
-        empty.textContent = cleanString(searchInput.value) ? 'No matching results found.' : 'Enter a search term to find results.';
-        resultsEl.appendChild(empty);
-        return;
-      }
-      const fragment = document.createDocumentFragment();
-      for (const row of rows.slice(0, 100)) {
-        const item = displayText(row);
-        const button = document.createElement('button');
-        button.type = 'button';
-        button.className = 'result';
-        const title = document.createElement('span');
-        title.className = 'result-title';
-        title.textContent = item.title;
-        button.appendChild(title);
-        if (item.url) {
-          const linkText = document.createElement('span');
-          linkText.className = 'result-url';
-          linkText.textContent = item.url;
-          button.appendChild(linkText);
-          button.addEventListener('click', () => { window.location.assign(item.url); });
-        } else {
-          button.disabled = true;
-          button.title = 'No valid HTTP(S) link is available for this result.';
+    function limitToTenWords(text) {
+        const words = text.split(/\s+/).filter(w => w.length > 0);
+        if (words.length > 10) {
+            return words.slice(0, 10).join(' ') + '...';
         }
-        fragment.appendChild(button);
-      }
-      resultsEl.appendChild(fragment);
-      if (rows.length > 100) {
-        const note = document.createElement('p');
-        note.className = 'status';
-        note.textContent = 'Showing the first 100 matches. Refine your search to see more specific results.';
-        resultsEl.appendChild(note);
-      }
+        return text;
+    }
+
+    function containsUrl(text) {
+        const lowerText = text.toLowerCase();
+        return lowerText.includes('http://') || 
+               lowerText.includes('https://') || 
+               lowerText.includes('wikipedia.org') ||
+               lowerText.includes('.org') ||
+               lowerText.includes('.com');
+    }
+
+    function extractRealUrl(rowArray) {
+        const urlRegex = /(https?:\/\/[^\s|]+)/i;
+        for (let i = 0; i < rowArray.length; i++) {
+            const cell = rowArray[i];
+            const match = cell.match(urlRegex);
+            if (match) {
+                return match.trim();
+            }
+        }
+        return null;
+    }
+
+    // Fetch CSV file from server
+    fetch(csvUrl)
+        .then(response => {
+            if (!response.ok) {
+                throw new Error('Unable to find DATA.CSV or permission error occurred');
+            }
+            return response.text();
+        })
+        .then(text => {
+            const lines = text.split('\n').map(line => line.trim()).filter(line => line.length > 0);
+            if (lines.length === 0) return;
+
+            csvData = lines.slice(1).map(line => parseCSVRow(line));
+
+            document.getElementById('status').innerText = `Data loaded successfully. Type to start searching.`;
+            const searchInput = document.getElementById('searchInput');
+            searchInput.disabled = false;
+            
+            searchInput.addEventListener('input', () => {
+                filterData();
+                updateURLQuery(searchInput.value);
+            });
+
+            // הפעלת מנגנון זיהוי הכתובת החדש והחסין
+            checkURLQuery();
+        })
+        .catch(error => {
+            document.getElementById('status').innerText = 'Error: ' + error.message;
+            document.getElementById('status').style.color = '#b33939'; 
+        });
+
+    function renderResults(results) {
+        const body = document.getElementById('tableBody');
+        body.innerHTML = ''; 
+        
+        if (results.length === 0) {
+            body.innerHTML = `<tr><td style="text-align:center; color:#a69580;">No matching results found</td></tr>`;
+            return;
+        }
+        
+        results.forEach(item => {
+            const tr = document.createElement('tr');
+            const td = document.createElement('td');
+            
+            td.textContent = limitToTenWords(item.matchedText); 
+            tr.appendChild(td);
+            
+            tr.addEventListener('click', () => {
+                const finalUrl = extractRealUrl(item.originalRow);
+                if (finalUrl) {
+                    window.location.href = finalUrl;
+                } else {
+                    alert('No valid link found for this result');
+                }
+            });
+            
+            body.appendChild(tr);
+        });
     }
 
     function filterData() {
-      const query = cleanString(searchInput.value).toLocaleLowerCase();
-      if (!query) { renderResults([]); return; }
-      const matches = csvData.filter(row =>
-        row.some(cell => !/^https?:\/\//i.test(cell.trim()) && cell.toLocaleLowerCase().includes(query))
-      );
-      renderResults(matches);
-      statusEl.textContent = matches.length
-        ? matches.length + ' matching row' + (matches.length === 1 ? '' : 's') + (matches.length > 100 ? ' (showing 100)' : '') + '.'
-        : 'No results for “' + cleanString(searchInput.value) + '”.';
+        const query = cleanString(document.getElementById('searchInput').value).toLowerCase();
+        
+        if (query === '') {
+            renderResults([]);
+            return;
+        }
+        
+        const matchedItems = [];
+        
+        csvData.forEach(row => {
+            row.forEach((cell) => {
+                if (containsUrl(cell)) return; 
+
+                if (cell.toLowerCase().includes(query)) {
+                    matchedItems.push({
+                        matchedText: cell,   
+                        originalRow: row     
+                    });
+                }
+            });
+        });
+        
+        renderResults(matchedItems);
+    }
+
+    // מנגנון חילוץ גלובלי וחסין תקלות ישירות מטקסט הכתובת המלא
+    function checkURLQuery() {
+        const currentHref = window.location.href;
+        let queryValue = '';
+
+        // סריקה ישירה של הטקסט בכתובת באמצעות ביטוי רגולרי לזיהוי q= או Q=
+        const match = currentHref.match(/[?&][qQ]=([^&#]+)/);
+        
+        if (match && match[1]) {
+            queryValue = decodeURIComponent(match[1]);
+            const cleanQuery = cleanString(queryValue);
+            
+            setTimeout(() => {
+                const searchInput = document.getElementById('searchInput');
+                if (searchInput) {
+                    searchInput.value = cleanQuery; 
+                    filterData(); 
+                    updateURLQuery(cleanQuery); 
+                }
+            }, 150);
+        }
     }
 
     function updateURLQuery(query) {
-      const url = new URL(window.location.href);
-      const value = cleanString(query);
-      url.searchParams.delete('Q');
-      if (value) url.searchParams.set('q', value);
-      else url.searchParams.delete('q');
-      window.history.replaceState(null, '', url.pathname + url.search + url.hash);
-    }
-
-    function restoreURLQuery() {
-      // URL parameter names are normally case-sensitive in URLSearchParams.
-      // Accept q, Q, and other casing variants (for example ?Q=hello).
-      const params = new URLSearchParams(window.location.search);
-      let query = '';
-      for (const [key, value] of params.entries()) {
-        if (key.toLowerCase() === 'q') {
-          query = value;
-          if (key === 'q') break; // Prefer the canonical lowercase parameter if both exist.
+        const url = new URL(window.location.href);
+        const cleanQuery = cleanString(query);
+        if (cleanQuery !== '') {
+            url.searchParams.set('q', cleanQuery); 
+        } else {
+            url.searchParams.delete('q'); 
+            url.searchParams.delete('Q'); 
         }
-      }
-      searchInput.value = query;
+        window.history.replaceState({}, '', url);
     }
+</script>
 
-    searchInput.addEventListener('input', () => {
-      clearTimeout(debounceTimer);
-      debounceTimer = setTimeout(() => {
-        filterData();
-        updateURLQuery(searchInput.value);
-      }, 100);
-    });
-
-    async function loadData() {
-      try {
-        const response = await fetch(csvUrl.href, { cache: 'no-cache' });
-        if (!response.ok) throw new Error('DATA.CSV returned HTTP ' + response.status + '.');
-        const text = await response.text();
-        const rows = parseCSV(text);
-        if (!rows.length) throw new Error('DATA.CSV is empty or could not be parsed.');
-        // Treat the first non-empty row as the CSV header.
-        csvData = rows.slice(1).filter(row => row.some(Boolean));
-        if (!csvData.length) throw new Error('DATA.CSV contains a header but no data rows.');
-        restoreURLQuery();
-        searchInput.disabled = false;
-        filterData();
-        statusEl.textContent = 'Loaded ' + csvData.length + ' rows. Type to search.';
-        if (searchInput.value) filterData();
-      } catch (error) {
-        statusEl.textContent = 'Could not load search data: ' + error.message + ' Check that DATA.CSV exists beside index.html and is accessible.';
-        statusEl.style.color = '#a12d2d';
-        resultsEl.replaceChildren();
-      }
-    }
-    loadData();
-  </script>
 </body>
 </html>
