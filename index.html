@@ -40,7 +40,6 @@
         th {
             background-color: #f2f2f2;
         }
-        /* עיצוב התוצאות כאלמנטים לחיצים */
         tbody tr {
             cursor: pointer;
             transition: background-color 0.2s;
@@ -91,6 +90,15 @@
         return r;
     }
 
+    // פונקציה המגבילה את הטקסט ל-10 מילים
+    function limitToTenWords(text) {
+        const words = text.split(/\s+/).filter(w => w.length > 0);
+        if (words.length > 10) {
+            return words.slice(0, 10).join(' ') + '...';
+        }
+        return text;
+    }
+
     // טעינת הקובץ מהשרת
     fetch(csvUrl)
         .then(response => {
@@ -131,7 +139,8 @@
             const tr = document.createElement('tr');
             const td = document.createElement('td');
             
-            td.textContent = item.matchedText; // מציג רק את הטקסט הספציפי שנמצא
+            // שימוש בפונקציית ההגבלה לפני הצגת הטקסט
+            td.textContent = limitToTenWords(item.matchedText); 
             tr.appendChild(td);
             
             // הפניה לקישור שבעמודה השנייה (אינדקס 1) של אותה שורה מקורית
@@ -152,7 +161,6 @@
     function filterData() {
         const query = document.getElementById('searchInput').value.toLowerCase().trim();
         
-        // אם תיבת החיפוש ריקה, לא מציגים כלום (או שניתן לשנות שיציג הכל)
         if (query === '') {
             renderResults([]);
             return;
@@ -161,12 +169,14 @@
         const matchedItems = [];
         
         csvData.forEach(row => {
-            row.forEach(cell => {
-                // אם התא מכיל את הטקסט המחופש (ולא מדובר בעמודת הקישור עצמה)
+            row.forEach((cell, index) => {
+                // נרצה להתעלם מעמודת הקישור עצמה (אינדקס 1) בזמן החיפוש כדי שלא תעלה בתוצאות
+                if (index === 1) return; 
+
                 if (cell.toLowerCase().includes(query)) {
                     matchedItems.push({
-                        matchedText: cell,   // הטקסט של התא הבודד להצגה
-                        originalRow: row     // השורה המלאה כדי לשלוף ממנה את הקישור בהמשך
+                        matchedText: cell,   
+                        originalRow: row     
                     });
                 }
             });
