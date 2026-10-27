@@ -97,16 +97,25 @@
     const csvUrl = 'DATA.CSV'; 
     let csvData = [];
 
+    // פונקציה שמנקה את כל התווים הסמויים, ירידות השורה הנסתרות ורווחים כפולים
+    function cleanString(str) {
+        if (!str) return '';
+        return str.toString()
+                  .replace(/[\r\n]+/g, ' ') // מנקה ירידות שורה נסתרות שמופיעות ב-CSV
+                  .replace(/[\s\u200B\u00A0]+/g, ' ') // הופך כל סוג רווח לרווח רגיל
+                  .trim();
+    }
+
     function parseCSVRow(text) {
         let p = '', r = [];
         let q = false;
         for (let i = 0; i < text.length; i++) {
             let c = text[i];
             if (c === '"') { q = !q; }
-            else if (c === ',' && !q) { r.push(p.trim()); p = ''; }
+            else if (c === ',' && !q) { r.push(cleanString(p)); p = ''; }
             else { p += c; }
         }
-        r.push(p.trim());
+        r.push(cleanString(p));
         return r;
     }
 
@@ -133,7 +142,7 @@
             const cell = rowArray[i];
             const match = cell.match(urlRegex);
             if (match) {
-                return match[0].trim();
+                return match.trim();
             }
         }
         return null;
@@ -148,6 +157,7 @@
             return response.text();
         })
         .then(text => {
+            // חלוקה לשורות וניקוי מוחלט של רווחים בלתי נראים בסופי שורות
             const lines = text.split('\n').map(line => line.trim()).filter(line => line.length > 0);
             if (lines.length === 0) return;
 
@@ -162,7 +172,7 @@
                 updateURLQuery(searchInput.value);
             });
 
-            // הפעלת הבדיקה רק לאחר שהנתונים מוכנים לחלוטין בזיכרון
+            // הפעלה ישירה ומיידית של בדיקת הקישור
             checkURLQuery();
         })
         .catch(error => {
@@ -200,7 +210,8 @@
     }
 
     function filterData() {
-        const query = document.getElementById('searchInput').value.toLowerCase().trim();
+        // ניקוי מילת החיפוש מרווחים כפולים
+        const query = cleanString(document.getElementById('searchInput').value).toLowerCase();
         
         if (query === '') {
             renderResults([]);
@@ -213,6 +224,7 @@
             row.forEach((cell) => {
                 if (containsUrl(cell)) return; 
 
+                // השוואה נקייה לחלוטין ללא תלות בתווים סמויים
                 if (cell.toLowerCase().includes(query)) {
                     matchedItems.push({
                         matchedText: cell,   
@@ -225,24 +237,26 @@
         renderResults(matchedItems);
     }
 
-    // פונקציית בדיקה משופרת ומאובטחת עם השהייה קלה לסנכרון מלא
     function checkURLQuery() {
         const urlParams = new URLSearchParams(window.location.search);
         const queryParam = urlParams.get('q');
         
         if (queryParam) {
-            setTimeout(() => {
-                const searchInput = document.getElementById('searchInput');
-                searchInput.value = queryParam; 
-                filterData(); 
-            }, 50); // השהייה של 50 מילישניות ליציבות מוחלטת
+            const searchInput = document.getElementById('searchInput');
+            // ניקוי הפרמטר שהגיע מהכתובת והזנתו ישירות לתיבה
+            const cleanQuery = cleanString(queryParam);
+            searchInput.value = cleanQuery; 
+            
+            // הרצת החיפוש באופן מיידי
+            filterData(); 
         }
     }
 
     function updateURLQuery(query) {
         const url = new URL(window.location.href);
-        if (query.trim() !== '') {
-            url.searchParams.set('q', query.trim());
+        const cleanQuery = cleanString(query);
+        if (cleanQuery !== '') {
+            url.searchParams.set('q', cleanQuery);
         } else {
             url.searchParams.delete('q'); 
         }
