@@ -14,21 +14,21 @@
         body {
             margin: 0;
             padding: 28px clamp(12px, 3.7vw, 56px);
-            background: linear-gradient(135deg, #f3ede2 0%, #e7decb 100%); /* Soft sand gradient */
-            color: #4a3e3d; /* Dark brown-gray text */
+            background: linear-gradient(135deg, #f3ede2 0%, #e7decb 100%);
+            color: #4a3e3d;
             min-height: 100vh;
         }
         .container {
             max-width: 600px;
             margin: 40px auto;
-            background: #fffdf9; /* Warm cream container */
+            background: #fffdf9;
             padding: 30px 24px;
             border-radius: 16px;
-            box-shadow: 0 12px 40px rgba(135, 120, 95, 0.15); /* Soft warm shadow */
+            box-shadow: 0 12px 40px rgba(135, 120, 95, 0.15);
             border: 1px solid rgba(232, 222, 201, 0.6);
         }
         h2 {
-            color: #705e49; /* Earthy brown headings */
+            color: #705e49;
             font-size: 24px;
             font-weight: 600;
             margin-bottom: 20px;
@@ -69,7 +69,7 @@
             text-align: left;
         }
         th {
-            background-color: #efe6cf; /* Sandy header */
+            background-color: #efe6cf;
             color: #61503b;
             font-weight: 600;
             font-size: 14px;
@@ -88,7 +88,7 @@
 
 <div class="container">
     <h2>Search Data from CSV</h2>
-    <div id="status" class="status">Loading dataset...</div>
+    <div id="status" class="status">Loading site data...</div>
     
     <input type="text" id="searchInput" placeholder="Type here to search...">
     
@@ -107,25 +107,21 @@
     let csvData = [];
     const searchInput = document.getElementById('searchInput');
 
-    // פונקציית חילוץ טקסט ידנית ואגרסיבית מה-URL (עוקפת את כל מנגנוני הדפדפן)
-    function getQueryFromURL() {
-        const href = window.location.href;
-        // מחפש q= או Q= בתוך כל הכתובת הגולמית
-        const match = href.match(/[?&][qQ]=([^&#]+)/);
-        if (match && match[1]) {
-            try {
-                return decodeURIComponent(match[1].replace(/\+/g, ' ')).trim();
-            } catch (e) {
-                return match[1].trim();
-            }
+    // חילוץ ישיר, פשוט ועיוור מהכתובת ללא תלות בפונקציות פנימיות
+    function getUrlParameter() {
+        const urlString = window.location.href;
+        // מחפש התאמה של q= או Q=
+        const match = urlString.match(/[?&][qQ]=([^&#]+)/);
+        if (match) {
+            return decodeURIComponent(match[1].replace(/\+/g, ' ')).trim();
         }
         return '';
     }
 
-    // שליפת הערך ושתילתו מיד בתיבה לפני כל פעולה אחרת
-    const initialQuery = getQueryFromURL();
-    if (initialQuery) {
-        searchInput.value = initialQuery;
+    // 1. שתילת הערך בתיבה מיידית כדי למנוע קפיצות ויזואליות
+    const initialParam = getUrlParameter();
+    if (initialParam) {
+        searchInput.value = initialParam;
     }
 
     function cleanString(str) {
@@ -175,10 +171,10 @@
         return null;
     }
 
-    // טעינת הקובץ והפעלת הסינון
+    // 2. טעינת קובץ הנתונים מהשרת
     fetch(csvUrl)
         .then(response => {
-            if (!response.ok) throw new Error('DATA.CSV footprint missing');
+            if (!response.ok) throw new Error('DATA.CSV not found');
             return response.text();
         })
         .then(text => {
@@ -188,12 +184,13 @@
             csvData = lines.slice(1).map(line => parseCSVRow(line));
             document.getElementById('status').innerText = `Data loaded successfully.`;
             
+            // האזנה להקלדות ידניות של המשתמש
             searchInput.addEventListener('input', () => {
                 filterData();
                 updateURLQuery(searchInput.value);
             });
 
-            // הרצה מיידית של החיפוש אם יש טקסט בתיבה
+            // 3. הפעלת החיפוש האוטומטי רק כשהנתונים מוכנים בזיכרון
             if (searchInput.value) {
                 filterData();
             }
