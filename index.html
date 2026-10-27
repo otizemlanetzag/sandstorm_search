@@ -97,7 +97,6 @@
     const csvUrl = 'DATA.CSV'; 
     let csvData = [];
 
-    // פונקציה שמנקה את כל התווים הסמויים, ירידות השורה הנסתרות ורווחים כפולים
     function cleanString(str) {
         if (!str) return '';
         return str.toString()
@@ -148,7 +147,6 @@
         return null;
     }
 
-    // Fetch CSV file from server
     fetch(csvUrl)
         .then(response => {
             if (!response.ok) {
@@ -161,7 +159,6 @@
             if (lines.length === 0) return;
 
             csvData = lines.slice(1).map(line => parseCSVRow(line));
-            console.log(`CSV Loaded successfully. Total rows: ${csvData.length}`);
 
             document.getElementById('status').innerText = `Data loaded successfully. Type to start searching.`;
             const searchInput = document.getElementById('searchInput');
@@ -172,11 +169,9 @@
                 updateURLQuery(searchInput.value);
             });
 
-            // הפעלת בדיקת הקישור האוטומטי בסיום הטעינה
             checkURLQuery();
         })
         .catch(error => {
-            console.error("Error loading CSV:", error);
             document.getElementById('status').innerText = 'Error: ' + error.message;
             document.getElementById('status').style.color = '#b33939'; 
         });
@@ -212,7 +207,6 @@
 
     function filterData() {
         const query = cleanString(document.getElementById('searchInput').value).toLowerCase();
-        console.log(`Filtering data for query: "${query}"`);
         
         if (query === '') {
             renderResults([]);
@@ -234,31 +228,26 @@
             });
         });
         
-        console.log(`Found ${matchedItems.length} matches.`);
         renderResults(matchedItems);
     }
 
-    // פונקציית בדיקה משופרת עם מנגנון השהייה יציב ופענוח כתובת מלא
     function checkURLQuery() {
         const urlParams = new URLSearchParams(window.location.search);
         let queryParam = urlParams.get('q');
         
         if (queryParam) {
-            // פענוח במקרה והטקסט בכתובת האתר הגיע מקודד (למשל מילים עם תווים מיוחדים או רווחים)
             queryParam = decodeURIComponent(queryParam);
-            console.log(`URL Query parameter detected: "${queryParam}". Triggering automated search...`);
+            const cleanQuery = cleanString(queryParam);
             
             setTimeout(() => {
                 const searchInput = document.getElementById('searchInput');
                 if (searchInput) {
-                    searchInput.value = cleanString(queryParam); 
+                    searchInput.value = cleanQuery; 
                     filterData(); 
-                } else {
-                    console.error("Search input element not found during automated search.");
+                    // התיקון כאן: דואג שהכתובת העליונה תציג את המילה שנבחרה בצורה מסודרת ומלאה
+                    updateURLQuery(cleanQuery); 
                 }
-            }, 150); // השהייה של 150 מילישניות לסנכרון מלא של הדפדפן
-        } else {
-            console.log("No query parameter found in URL.");
+            }, 150);
         }
     }
 
