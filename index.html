@@ -118,7 +118,6 @@
         return text;
     }
 
-    // בודק בצורה רחבה האם התא מכיל מאפיינים של קישור
     function containsUrl(text) {
         const lowerText = text.toLowerCase();
         return lowerText.includes('http://') || 
@@ -128,21 +127,19 @@
                lowerText.includes('.com');
     }
 
-    // מנגנון חילוץ מבוסס ביטוי רגולרי - מוצא את הקישור השלם והמלא בטקסט
     function extractRealUrl(rowArray) {
-        // ביטוי שמחפש במדויק טקסט שמתחיל ב-http/https וממשיך עד סוף המילים או הסימנים
         const urlRegex = /(https?:\/\/[^\s|]+)/i;
-        
         for (let i = 0; i < rowArray.length; i++) {
             const cell = rowArray[i];
             const match = cell.match(urlRegex);
             if (match) {
-                return match[0].trim(); // מחזיר את הקישור המלא שנמצא (כולל כל הנתיב הארוך)
+                return match[0].trim();
             }
         }
         return null;
     }
 
+    // Fetch CSV file from server
     fetch(csvUrl)
         .then(response => {
             if (!response.ok) {
@@ -159,7 +156,15 @@
             document.getElementById('status').innerText = `Data loaded successfully. Type to start searching.`;
             const searchInput = document.getElementById('searchInput');
             searchInput.disabled = false;
-            searchInput.addEventListener('input', filterData);
+            
+            // האזנה להקלדה ידנית של המשתמש
+            searchInput.addEventListener('input', () => {
+                filterData();
+                updateURLQuery(searchInput.value);
+            });
+
+            // בדיקה האם יש פרמטר ?q= בכתובת האתר בזמן הטעינה
+            checkURLQuery();
         })
         .catch(error => {
             document.getElementById('status').innerText = 'Error: ' + error.message;
@@ -183,7 +188,6 @@
             tr.appendChild(td);
             
             tr.addEventListener('click', () => {
-                // קורא לפונקציה החדשה ומעביר לה את כל מערך השורה
                 const finalUrl = extractRealUrl(item.originalRow);
                 if (finalUrl) {
                     window.location.href = finalUrl;
@@ -220,6 +224,30 @@
         });
         
         renderResults(matchedItems);
+    }
+
+    // פונקציה שבודקת ומפעילה את החיפוש מתוך הכתובת (URL) בזמן טעינת הדף
+    function checkURLQuery() {
+        const urlParams = new URLSearchParams(window.location.search);
+        const queryParam = urlParams.get('q');
+        
+        if (queryParam) {
+            const searchInput = document.getElementById('searchInput');
+            searchInput.value = queryParam; // מזין את המילה לתיבת החיפוש
+            filterData(); // מריץ את הסינון אוטומטית
+        }
+    }
+
+    // פונקציה שמעדכנת את הכתובת בדפדפן בזמן שהמשתמש מקליד (בלי לרענן את הדף)
+    function updateURLQuery(query) {
+        const url = new URL(window.location.href);
+        if (query.trim() !== '') {
+            url.searchParams.set('q', query.trim());
+        } else {
+            url.searchParams.delete('q'); // מוחק את הפרמטר אם התיבה ריקה
+        }
+        // עדכון שורת הכתובת בהיסטוריית הדפדפן
+        window.history.replaceState({}, '', url);
     }
 </script>
 
