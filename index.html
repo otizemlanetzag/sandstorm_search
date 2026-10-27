@@ -8,24 +8,39 @@
         body {
             font-family: Arial, sans-serif;
             margin: 20px;
-            background-color: #f9f9f9;
+            background-color: #f7f4eb; /* צבע חול בהיר מאוד ברקע הכללי */
+            color: #4a3e3d; /* צבע טקסט חום-אפרפר כהה לקריאות מקסימלית */
         }
         .container {
             max-width: 600px;
-            margin: 0 auto;
-            background: #fff;
-            padding: 20px;
-            border-radius: 8px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            margin: 40px auto;
+            background: #fffdf9; /* צבע שמנת חם לרקע התיבה */
+            padding: 25px;
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(180, 165, 140, 0.15); /* צל רך בגוון חול */
+            border: 1px solid #e8dec9; /* מסגרת עדינה בגוון מדברי */
+        }
+        h2 {
+            color: #705e49; /* חום אדמה רך לכותרת */
+            margin-top: 0;
+            margin-bottom: 20px;
         }
         input[type="text"] {
             width: 100%;
-            padding: 10px;
+            padding: 12px;
             margin-bottom: 20px;
             box-sizing: border-box;
-            border: 1px solid #ccc;
-            border-radius: 4px;
+            border: 1px solid #d9ccb4; /* מסגרת תיבת הטקסט בגוון חול */
+            border-radius: 6px;
             font-size: 16px;
+            background-color: #faf7f0; /* רקע פנימי רך לתיבת החיפוש */
+            color: #4a3e3d;
+            outline: none;
+            transition: border-color 0.2s, box-shadow 0.2s;
+        }
+        input[type="text"]:focus {
+            border-color: #bfae93; /* הדגשת המסגרת בפוקוס לחום-זהוב */
+            box-shadow: 0 0 5px rgba(191, 174, 147, 0.4);
         }
         table {
             width: 100%;
@@ -33,24 +48,28 @@
             margin-top: 10px;
         }
         th, td {
-            border: 1px solid #ddd;
-            padding: 12px;
+            border: 1px solid #ebdcb9; /* גבולות תאים בצבע חול בהיר */
+            padding: 14px;
             text-align: right;
         }
         th {
-            background-color: #f2f2f2;
+            background-color: #efe6cf; /* כותרת הטבלה בגוון חול מובהק אך רך */
+            color: #61503b;
+            font-weight: bold;
         }
         tbody tr {
             cursor: pointer;
             transition: background-color 0.2s;
         }
+        /* אפקט מעבר עכבר בגוון חול-שמנת עשיר */
         tbody tr:hover {
-            background-color: #e6f7ff;
+            background-color: #f3ebda; 
         }
         .status {
-            color: #666;
+            color: #8c7b64; /* טקסט סטטוס בחום בהיר */
             font-style: italic;
-            margin-bottom: 10px;
+            margin-bottom: 15px;
+            font-size: 14px;
         }
     </style>
 </head>
@@ -90,7 +109,7 @@
         return r;
     }
 
-    // פונקציה המגבילה את הטקסט ל-10 מילים
+    // חיתוך לפי המנגנון הישן והפשוט
     function limitToTenWords(text) {
         const words = text.split(/\s+/).filter(w => w.length > 0);
         if (words.length > 10) {
@@ -111,7 +130,7 @@
             const lines = text.split('\n').map(line => line.trim()).filter(line => line.length > 0);
             if (lines.length === 0) return;
 
-            // דילוג על שורת הכותרות המקורית ושמירת הנתונים בלבד
+            // שמירת הנתונים ללא שורת הכותרות
             csvData = lines.slice(1).map(line => parseCSVRow(line));
 
             // הפעלת תיבת החיפוש
@@ -122,7 +141,7 @@
         })
         .catch(error => {
             document.getElementById('status').innerText = 'שגיאה: ' + error.message;
-            document.getElementById('status').style.color = 'red';
+            document.getElementById('status').style.color = '#b33939'; // צבע שגיאה מותאם בגוון טרקוטה/חמרה
         });
 
     // הצגת התאים שנמצאו בטבלה
@@ -131,7 +150,7 @@
         body.innerHTML = ''; // ניקוי הטבלה
         
         if (results.length === 0) {
-            body.innerHTML = `<tr><td style="text-align:center; color:#999;">לא נמצאו תוצאות מתאימות</td></tr>`;
+            body.innerHTML = `<tr><td style="text-align:center; color:#a69580;">לא נמצאו תוצאות מתאימות</td></tr>`;
             return;
         }
         
@@ -139,11 +158,10 @@
             const tr = document.createElement('tr');
             const td = document.createElement('td');
             
-            // שימוש בפונקציית ההגבלה לפני הצגת הטקסט
             td.textContent = limitToTenWords(item.matchedText); 
             tr.appendChild(td);
             
-            // הפניה לקישור שבעמודה השנייה (אינדקס 1) של אותה שורה מקורית
+            // הפניה לקישור שבעמודה השנייה (אינדקס 1)
             tr.addEventListener('click', () => {
                 const url = item.originalRow[1]; 
                 if (url) {
@@ -170,7 +188,7 @@
         
         csvData.forEach(row => {
             row.forEach((cell, index) => {
-                // נרצה להתעלם מעמודת הקישור עצמה (אינדקס 1) בזמן החיפוש כדי שלא תעלה בתוצאות
+                // התעלמות מעמודת הקישור עצמה בזמן החיפוש
                 if (index === 1) return; 
 
                 if (cell.toLowerCase().includes(query)) {
