@@ -117,6 +117,15 @@
         return text;
     }
 
+    // פונקציית עזר לבדיקה האם הטקסט הוא קישור אינטרנט
+    function isUrl(text) {
+        const lowerText = text.toLowerCase();
+        return lowerText.startsWith('http://') || 
+               lowerText.startsWith('https://') || 
+               lowerText.startsWith('www.') ||
+               /\.[a-z]{2,4}(\/|$)/i.test(lowerText); // בדיקה אם מכיל סיומת כמו .com, .html וכו'
+    }
+
     // טעינת הקובץ מהשרת
     fetch(csvUrl)
         .then(response => {
@@ -160,13 +169,19 @@
             td.textContent = limitToTenWords(item.matchedText); 
             tr.appendChild(td);
             
-            // הפניה לקישור שבעמודה השנייה (אינדקס 1)
+            // דינמי: מחפש את הקישור האמיתי בתוך השורה המקורית ומנווט אליו
             tr.addEventListener('click', () => {
-                const url = item.originalRow[1]; // שולף תמיד את עמודה 2 לצורך הניווט
-                if (url) {
-                    window.location.href = url;
+                const targetUrl = item.originalRow.find(cell => isUrl(cell));
+                if (targetUrl) {
+                    window.location.href = targetUrl.startsWith('http') ? targetUrl : 'https://' + targetUrl;
                 } else {
-                    alert('לא נמצא קישור תואם עבור תוצאה זו');
+                    // אם אין קישור מלא עם http, מנסה לקחת את העמודה השנייה כגיבוי (אינדקס 1)
+                    const backupUrl = item.originalRow[1];
+                    if (backupUrl) {
+                        window.location.href = backupUrl;
+                    } else {
+                        alert('לא נמצא קישור תואם עבור תוצאה זו');
+                    }
                 }
             });
             
@@ -174,7 +189,7 @@
         });
     }
 
-    // סינון ובניית רשימת התאים המתאימים מכל עמודה מלבד עמודה 2
+    // סינון ובניית רשימת התאים המתאימים - תוך התעלמות מכל תא שהוא קישור
     function filterData() {
         const query = document.getElementById('searchInput').value.toLowerCase().trim();
         
@@ -186,14 +201,14 @@
         const matchedItems = [];
         
         csvData.forEach(row => {
-            row.forEach((cell, index) => {
-                // דילוג מוחלט על עמודה 2 (אינדקס 1) בזמן החיפוש וההצגה
-                if (index === 1) return; 
+            row.forEach((cell) => {
+                // חסימת קישורים: אם התא הספציפי הזה הוא כתובת אינטרנט, אל תציג אותו בתוצאות החיפוש
+                if (isUrl(cell)) return; 
 
                 if (cell.toLowerCase().includes(query)) {
                     matchedItems.push({
-                        matchedText: cell,   // הטקסט מהעמודה שנמצאה (למשל עמודה 1, 3, 4 וכו')
-                        originalRow: row     // כל השורה כדי לשלוף ממנה אחר כך את הקישור מעמודה 2
+                        matchedText: cell,   
+                        originalRow: row     
                     });
                 }
             });
