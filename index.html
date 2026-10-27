@@ -127,12 +127,20 @@
                lowerText.includes('.com');
     }
 
-    // התיקון כאן: הפונקציה מבטיחה שהכתובת תמיד תהיה אבסולוטית ותתחיל ב-https
+    // הפונקציה המעודכנת שמחפשת קודם כל את הקישור המלא (עם http/https)
     function extractRealUrl(text) {
         let url = text.trim();
+        
         if (text.includes('|')) {
             const parts = text.split('|');
-            const urlPart = parts.find(p => p.includes('http://') || p.includes('https://') || p.includes('wikipedia.org'));
+            // עדיפות ראשונה: חלק שמכיל פרוטוקול אינטרנט מלא (http/https) לקבלת העמוד הספציפי
+            let urlPart = parts.find(p => p.includes('http://') || p.includes('https://'));
+            
+            // עדיפות שנייה: אם אין http, מחפש לפי wikipedia.org
+            if (!urlPart) {
+                urlPart = parts.find(p => p.includes('wikipedia.org'));
+            }
+            
             if (urlPart) url = urlPart.trim();
         }
         
