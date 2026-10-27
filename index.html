@@ -9,7 +9,7 @@
             font-family: Arial, sans-serif;
             margin: 20px;
             background-color: #f7f4eb; /* Soft sand background */
-            color: #4a3e3d; /* Dark brown-gray text for high readability */
+            color: #4a3e3d; /* Dark brown-gray text */
         }
         .container {
             max-width: 600px;
@@ -24,6 +24,7 @@
             color: #705e49; /* Earthy brown for headings */
             margin-top: 0;
             margin-bottom: 20px;
+            text-align: left;
         }
         input[type="text"] {
             width: 100%;
@@ -36,6 +37,7 @@
             background-color: #faf7f0;
             color: #4a3e3d;
             outline: none;
+            text-align: left; /* Left align text input */
             transition: border-color 0.2s, box-shadow 0.2s;
         }
         input[type="text"]:focus {
@@ -69,6 +71,7 @@
             font-style: italic;
             margin-bottom: 15px;
             font-size: 14px;
+            text-align: left;
         }
     </style>
 </head>
@@ -160,7 +163,7 @@
         })
         .catch(error => {
             document.getElementById('status').innerText = 'Error: ' + error.message;
-            document.getElementById('status').style.color = '#b33939'; // Terracotta red for errors
+            document.getElementById('status').style.color = '#b33939'; 
         });
 
     // Render matched cells into the table
