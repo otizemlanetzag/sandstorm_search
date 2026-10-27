@@ -101,8 +101,8 @@
     function cleanString(str) {
         if (!str) return '';
         return str.toString()
-                  .replace(/[\r\n]+/g, ' ') // מנקה ירידות שורה נסתרות שמופיעות ב-CSV
-                  .replace(/[\s\u200B\u00A0]+/g, ' ') // הופך כל סוג רווח לרווח רגיל
+                  .replace(/[\r\n]+/g, ' ') 
+                  .replace(/[\s\u200B\u00A0]+/g, ' ') 
                   .trim();
     }
 
@@ -157,11 +157,11 @@
             return response.text();
         })
         .then(text => {
-            // חלוקה לשורות וניקוי מוחלט של רווחים בלתי נראים בסופי שורות
             const lines = text.split('\n').map(line => line.trim()).filter(line => line.length > 0);
             if (lines.length === 0) return;
 
             csvData = lines.slice(1).map(line => parseCSVRow(line));
+            console.log(`CSV Loaded successfully. Total rows: ${csvData.length}`);
 
             document.getElementById('status').innerText = `Data loaded successfully. Type to start searching.`;
             const searchInput = document.getElementById('searchInput');
@@ -172,10 +172,11 @@
                 updateURLQuery(searchInput.value);
             });
 
-            // הפעלה ישירה ומיידית של בדיקת הקישור
+            // הפעלת בדיקת הקישור האוטומטי בסיום הטעינה
             checkURLQuery();
         })
         .catch(error => {
+            console.error("Error loading CSV:", error);
             document.getElementById('status').innerText = 'Error: ' + error.message;
             document.getElementById('status').style.color = '#b33939'; 
         });
@@ -210,8 +211,8 @@
     }
 
     function filterData() {
-        // ניקוי מילת החיפוש מרווחים כפולים
         const query = cleanString(document.getElementById('searchInput').value).toLowerCase();
+        console.log(`Filtering data for query: "${query}"`);
         
         if (query === '') {
             renderResults([]);
@@ -224,7 +225,6 @@
             row.forEach((cell) => {
                 if (containsUrl(cell)) return; 
 
-                // השוואה נקייה לחלוטין ללא תלות בתווים סמויים
                 if (cell.toLowerCase().includes(query)) {
                     matchedItems.push({
                         matchedText: cell,   
@@ -234,21 +234,31 @@
             });
         });
         
+        console.log(`Found ${matchedItems.length} matches.`);
         renderResults(matchedItems);
     }
 
+    // פונקציית בדיקה משופרת עם מנגנון השהייה יציב ופענוח כתובת מלא
     function checkURLQuery() {
         const urlParams = new URLSearchParams(window.location.search);
-        const queryParam = urlParams.get('q');
+        let queryParam = urlParams.get('q');
         
         if (queryParam) {
-            const searchInput = document.getElementById('searchInput');
-            // ניקוי הפרמטר שהגיע מהכתובת והזנתו ישירות לתיבה
-            const cleanQuery = cleanString(queryParam);
-            searchInput.value = cleanQuery; 
+            // פענוח במקרה והטקסט בכתובת האתר הגיע מקודד (למשל מילים עם תווים מיוחדים או רווחים)
+            queryParam = decodeURIComponent(queryParam);
+            console.log(`URL Query parameter detected: "${queryParam}". Triggering automated search...`);
             
-            // הרצת החיפוש באופן מיידי
-            filterData(); 
+            setTimeout(() => {
+                const searchInput = document.getElementById('searchInput');
+                if (searchInput) {
+                    searchInput.value = cleanString(queryParam); 
+                    filterData(); 
+                } else {
+                    console.error("Search input element not found during automated search.");
+                }
+            }, 150); // השהייה של 150 מילישניות לסנכרון מלא של הדפדפן
+        } else {
+            console.log("No query parameter found in URL.");
         }
     }
 
