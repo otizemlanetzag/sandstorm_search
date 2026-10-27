@@ -8,20 +8,20 @@
         body {
             font-family: Arial, sans-serif;
             margin: 20px;
-            background-color: #f7f4eb; 
-            color: #4a3e3d; 
+            background-color: #f7f4eb; /* Soft sand background */
+            color: #4a3e3d; /* Dark brown-gray text */
         }
         .container {
             max-width: 600px;
             margin: 40px auto;
-            background: #fffdf9; 
+            background: #fffdf9; /* Warm cream container background */
             padding: 25px;
             border-radius: 12px;
-            box-shadow: 0 4px 12px rgba(180, 165, 140, 0.15); 
+            box-shadow: 0 4px 12px rgba(180, 165, 140, 0.15); /* Soft sandy shadow */
             border: 1px solid #e8dec9;
         }
         h2 {
-            color: #705e49; 
+            color: #705e49; /* Earthy brown for headings */
             margin-top: 0;
             margin-bottom: 20px;
             text-align: left;
@@ -55,7 +55,7 @@
             text-align: left; 
         }
         th {
-            background-color: #efe6cf; 
+            background-color: #efe6cf; /* Soft sand table header */
             color: #61503b;
             font-weight: bold;
         }
@@ -127,18 +127,24 @@
                lowerText.includes('.com');
     }
 
-    // הפונקציה המעודכנת שמחפשת קודם כל את הקישור המלא (עם http/https)
+    // הפונקציה המתוקנת והחסינה לחילוץ הקישור המלא והמדויק של הערך
     function extractRealUrl(text) {
         let url = text.trim();
         
         if (text.includes('|')) {
             const parts = text.split('|');
-            // עדיפות ראשונה: חלק שמכיל פרוטוקול אינטרנט מלא (http/https) לקבלת העמוד הספציפי
-            let urlPart = parts.find(p => p.includes('http://') || p.includes('https://'));
             
-            // עדיפות שנייה: אם אין http, מחפש לפי wikipedia.org
+            // עדיפות ראשונה: למצוא את החלק שמכיל קישור מלא לעמוד ספציפי (/wiki/)
+            let urlPart = parts.find(p => p.toLowerCase().includes('/wiki/'));
+            
+            // עדיפות שנייה: חלק שמכיל פרוטוקול אינטרנט מלא (http)
             if (!urlPart) {
-                urlPart = parts.find(p => p.includes('wikipedia.org'));
+                urlPart = parts.find(p => p.toLowerCase().includes('http://') || p.toLowerCase().includes('https://'));
+            }
+            
+            // עדיפות שלישית: גיבוי כללי לפי דומיין
+            if (!urlPart) {
+                urlPart = parts.find(p => p.toLowerCase().includes('wikipedia.org'));
             }
             
             if (urlPart) url = urlPart.trim();
