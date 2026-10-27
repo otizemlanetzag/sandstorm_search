@@ -107,21 +107,19 @@
     let csvData = [];
     const searchInput = document.getElementById('searchInput');
 
-    // חילוץ ישיר, פשוט ועיוור מהכתובת ללא תלות בפונקציות פנימיות
-    function getUrlParameter() {
-        const urlString = window.location.href;
-        // מחפש התאמה של q= או Q=
-        const match = urlString.match(/[?&][qQ]=([^&#]+)/);
-        if (match) {
-            return decodeURIComponent(match[1].replace(/\+/g, ' ')).trim();
+    // מנגנון חדש: קורא את מילת החיפוש ישירות מתוך הסולמית (#) בכתובת האתר
+    function getQueryFromHash() {
+        const hash = window.location.hash; // מחזיר למשל: #wiki או #WIKIPEDIA
+        if (hash && hash.length > 1) {
+            return decodeURIComponent(hash.substring(1)).trim(); // מסיר את סימן ה-# ומפענח
         }
         return '';
     }
 
-    // 1. שתילת הערך בתיבה מיידית כדי למנוע קפיצות ויזואליות
-    const initialParam = getUrlParameter();
-    if (initialParam) {
-        searchInput.value = initialParam;
+    // 1. שתילת הערך בתיבה מהסולמית מיד עם עליית הדף (עוקף שרת לחלוטין)
+    const initialQuery = getQueryFromHash();
+    if (initialQuery) {
+        searchInput.value = initialQuery;
     }
 
     function cleanString(str) {
@@ -165,7 +163,7 @@
             const cell = rowArray[i];
             const match = cell.match(urlRegex);
             if (match) {
-                return match[0].trim();
+                return match.trim();
             }
         }
         return null;
@@ -184,13 +182,13 @@
             csvData = lines.slice(1).map(line => parseCSVRow(line));
             document.getElementById('status').innerText = `Data loaded successfully.`;
             
-            // האזנה להקלדות ידניות של המשתמש
+            // האזנה להקלדות ידניות ועדכון הסולמית בהתאם
             searchInput.addEventListener('input', () => {
                 filterData();
-                updateURLQuery(searchInput.value);
+                updateURLHash(searchInput.value);
             });
 
-            // 3. הפעלת החיפוש האוטומטי רק כשהנתונים מוכנים בזיכרון
+            // 3. הפעלת החיפוש האוטומטי אם נשתל ערך מהסולמית
             if (searchInput.value) {
                 filterData();
             }
@@ -255,16 +253,14 @@
         renderResults(matchedItems);
     }
 
-    function updateURLQuery(query) {
-        const url = new URL(window.location.href);
+    // מעדכן את הסולמית בכתובת האתר בזמן ההקלדה ללא רענון עמוד
+    function updateURLHash(query) {
         const cleanQuery = cleanString(query);
         if (cleanQuery !== '') {
-            url.searchParams.set('q', cleanQuery); 
+            window.history.replaceState({}, '', '#' + cleanQuery); 
         } else {
-            url.searchParams.delete('q'); 
-            url.searchParams.delete('Q'); 
+            window.history.replaceState({}, '', window.location.pathname); // מנקה את הסולמית אם ריק
         }
-        window.history.replaceState({}, '', url);
     }
 </script>
 
