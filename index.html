@@ -8,20 +8,20 @@
         body {
             font-family: Arial, sans-serif;
             margin: 20px;
-            background-color: #f7f4eb; /* צבע חול בהיר מאוד ברקע הכללי */
-            color: #4a3e3d; /* צבע טקסט חום-אפרפר כהה לקריאות מקסימלית */
+            background-color: #f7f4eb; /* צבע חול בהיר מאוד */
+            color: #4a3e3d; /* צבע טקסט חום-אפרפר כהה */
         }
         .container {
             max-width: 600px;
             margin: 40px auto;
-            background: #fffdf9; /* צבע שמנת חם לרקע התיבה */
+            background: #fffdf9; /* צבע שמנת חם */
             padding: 25px;
             border-radius: 12px;
             box-shadow: 0 4px 12px rgba(180, 165, 140, 0.15); /* צל רך בגוון חול */
-            border: 1px solid #e8dec9; /* מסגרת עדינה בגוון מדברי */
+            border: 1px solid #e8dec9;
         }
         h2 {
-            color: #705e49; /* חום אדמה רך לכותרת */
+            color: #705e49; /* חום אדמה רך */
             margin-top: 0;
             margin-bottom: 20px;
         }
@@ -30,16 +30,16 @@
             padding: 12px;
             margin-bottom: 20px;
             box-sizing: border-box;
-            border: 1px solid #d9ccb4; /* מסגרת תיבת הטקסט בגוון חול */
+            border: 1px solid #d9ccb4;
             border-radius: 6px;
             font-size: 16px;
-            background-color: #faf7f0; /* רקע פנימי רך לתיבת החיפוש */
+            background-color: #faf7f0;
             color: #4a3e3d;
             outline: none;
             transition: border-color 0.2s, box-shadow 0.2s;
         }
         input[type="text"]:focus {
-            border-color: #bfae93; /* הדגשת המסגרת בפוקוס לחום-זהוב */
+            border-color: #bfae93;
             box-shadow: 0 0 5px rgba(191, 174, 147, 0.4);
         }
         table {
@@ -48,12 +48,12 @@
             margin-top: 10px;
         }
         th, td {
-            border: 1px solid #ebdcb9; /* גבולות תאים בצבע חול בהיר */
+            border: 1px solid #ebdcb9;
             padding: 14px;
             text-align: right;
         }
         th {
-            background-color: #efe6cf; /* כותרת הטבלה בגוון חול מובהק אך רך */
+            background-color: #efe6cf;
             color: #61503b;
             font-weight: bold;
         }
@@ -61,12 +61,11 @@
             cursor: pointer;
             transition: background-color 0.2s;
         }
-        /* אפקט מעבר עכבר בגוון חול-שמנת עשיר */
         tbody tr:hover {
             background-color: #f3ebda; 
         }
         .status {
-            color: #8c7b64; /* טקסט סטטוס בחום בהיר */
+            color: #8c7b64;
             font-style: italic;
             margin-bottom: 15px;
             font-size: 14px;
@@ -109,7 +108,7 @@
         return r;
     }
 
-    // חיתוך לפי המנגנון הישן והפשוט
+    // חיתוך לפי המנגנון הישן והפשוט של 10 מילים
     function limitToTenWords(text) {
         const words = text.split(/\s+/).filter(w => w.length > 0);
         if (words.length > 10) {
@@ -141,7 +140,7 @@
         })
         .catch(error => {
             document.getElementById('status').innerText = 'שגיאה: ' + error.message;
-            document.getElementById('status').style.color = '#b33939'; // צבע שגיאה מותאם בגוון טרקוטה/חמרה
+            document.getElementById('status').style.color = '#b33939';
         });
 
     // הצגת התאים שנמצאו בטבלה
@@ -163,7 +162,7 @@
             
             // הפניה לקישור שבעמודה השנייה (אינדקס 1)
             tr.addEventListener('click', () => {
-                const url = item.originalRow[1]; 
+                const url = item.originalRow[1]; // שולף תמיד את עמודה 2 לצורך הניווט
                 if (url) {
                     window.location.href = url;
                 } else {
@@ -175,7 +174,7 @@
         });
     }
 
-    // סינון ובניית רשימת התאים המתאימים
+    // סינון ובניית רשימת התאים המתאימים מכל עמודה מלבד עמודה 2
     function filterData() {
         const query = document.getElementById('searchInput').value.toLowerCase().trim();
         
@@ -188,13 +187,13 @@
         
         csvData.forEach(row => {
             row.forEach((cell, index) => {
-                // התעלמות מעמודת הקישור עצמה בזמן החיפוש
+                // דילוג מוחלט על עמודה 2 (אינדקס 1) בזמן החיפוש וההצגה
                 if (index === 1) return; 
 
                 if (cell.toLowerCase().includes(query)) {
                     matchedItems.push({
-                        matchedText: cell,   
-                        originalRow: row     
+                        matchedText: cell,   // הטקסט מהעמודה שנמצאה (למשל עמודה 1, 3, 4 וכו')
+                        originalRow: row     // כל השורה כדי לשלוף ממנה אחר כך את הקישור מעמודה 2
                     });
                 }
             });
