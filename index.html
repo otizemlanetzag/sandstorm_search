@@ -5,66 +5,34 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>CSV Search Engine</title>
     <style>
+        * { 
+            box-sizing: border-box; 
+            margin: 0; 
+            padding: 0; 
+            font-family: system-ui, -apple-system, sans-serif; 
+        }
         body {
-            font-family: Arial, sans-serif;
-            margin: 20px;
-            background-color: #f7f4eb; /* Soft sand background */
-            color: #4a3e3d; /* Dark brown-gray text */
+            margin: 0;
+            padding: 28px clamp(12px, 3.7vw, 56px);
+            background: linear-gradient(135deg, #f3ede2 0%, #e7decb 100%); /* Elegant sand gradient background */
+            color: #4a3e3d; /* Soft dark brown text */
+            min-height: 100vh;
         }
         .container {
             max-width: 600px;
             margin: 40px auto;
-            background: #fffdf9; /* Warm cream container background */
-            padding: 25px;
-            border-radius: 12px;
-            box-shadow: 0 4px 12px rgba(180, 165, 140, 0.15); /* Soft sandy shadow */
-            border: 1px solid #e8dec9;
+            background: #fffdf9; /* Soft cream container */
+            padding: 30px 24px;
+            border-radius: 16px;
+            box-shadow: 0 12px 40px rgba(135, 120, 95, 0.15); /* Delicate warm shadow */
+            border: 1px solid rgba(232, 222, 201, 0.6);
         }
         h2 {
-            color: #705e49; /* Earthy brown for headings */
-            margin-top: 0;
+            color: #705e49; /* Earthy clay tone */
+            font-size: 24px;
+            font-weight: 600;
             margin-bottom: 20px;
             text-align: left;
-        }
-        input[type="text"] {
-            width: 100%;
-            padding: 12px;
-            margin-bottom: 20px;
-            box-sizing: border-box;
-            border: 1px solid #d9ccb4;
-            border-radius: 6px;
-            font-size: 16px;
-            background-color: #faf7f0;
-            color: #4a3e3d;
-            outline: none;
-            text-align: left; 
-            transition: border-color 0.2s, box-shadow 0.2s;
-        }
-        input[type="text"]:focus {
-            border-color: #bfae93;
-            box-shadow: 0 0 5px rgba(191, 174, 147, 0.4);
-        }
-        table {
-            width: 100%;
-            border-collapse: collapse;
-            margin-top: 10px;
-        }
-        th, td {
-            border: 1px solid #ebdcb9;
-            padding: 14px;
-            text-align: left; 
-        }
-        th {
-            background-color: #efe6cf; /* Soft sand table header */
-            color: #61503b;
-            font-weight: bold;
-        }
-        tbody tr {
-            cursor: pointer;
-            transition: background-color 0.2s;
-        }
-        tbody tr:hover {
-            background-color: #f3ebda; 
         }
         .status {
             color: #8c7b64;
@@ -73,13 +41,55 @@
             font-size: 14px;
             text-align: left;
         }
+        input[type="text"] {
+            width: 100%;
+            padding: 14px 16px;
+            margin-bottom: 24px;
+            border: 1px solid #d9ccb4;
+            border-radius: 10px;
+            font-size: 16px;
+            background-color: #faf7f0;
+            color: #4a3e3d;
+            outline: none;
+            text-align: left;
+            transition: border-color 0.2s, box-shadow 0.2s;
+        }
+        input[type="text"]:focus {
+            border-color: #bfae93;
+            box-shadow: 0 0 0 3px rgba(191, 174, 147, 0.25);
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 10px;
+        }
+        th, td {
+            border: 1px solid #ebdcb9;
+            padding: 14px 16px;
+            text-align: left;
+        }
+        th {
+            background-color: #efe6cf; /* Sandy header */
+            color: #61503b;
+            font-weight: 600;
+            font-size: 14px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        tbody tr {
+            cursor: pointer;
+            transition: background-color 0.18s;
+        }
+        tbody tr:hover {
+            background-color: #f3ebda; /* Soft warm selection pulse */
+        }
     </style>
 </head>
 <body>
 
 <div class="container">
     <h2>Search Data from CSV</h2>
-    <div id="status" class="status">Loading data...</div>
+    <div id="status" class="status">Initializing connection...</div>
     
     <input type="text" id="searchInput" placeholder="Type here to search..." disabled>
     
@@ -97,6 +107,7 @@
     const csvUrl = 'DATA.CSV'; 
     let csvData = [];
 
+    // Helper function to thoroughly scrub layout breaks and phantom syntax
     function cleanString(str) {
         if (!str) return '';
         return str.toString()
@@ -141,18 +152,16 @@
             const cell = rowArray[i];
             const match = cell.match(urlRegex);
             if (match) {
-                return match.trim();
+                return match[0].trim();
             }
         }
         return null;
     }
 
-    // Fetch CSV file from server
+    // Execution Engine triggered strictly upon secure content fetch
     fetch(csvUrl)
         .then(response => {
-            if (!response.ok) {
-                throw new Error('Unable to find DATA.CSV or permission error occurred');
-            }
+            if (!response.ok) throw new Error('DATA.CSV footprint missing or denied access');
             return response.text();
         })
         .then(text => {
@@ -161,7 +170,7 @@
 
             csvData = lines.slice(1).map(line => parseCSVRow(line));
 
-            document.getElementById('status').innerText = `Data loaded successfully. Type to start searching.`;
+            document.getElementById('status').innerText = `Data matrix loaded. Type to sort records.`;
             const searchInput = document.getElementById('searchInput');
             searchInput.disabled = false;
             
@@ -170,11 +179,11 @@
                 updateURLQuery(searchInput.value);
             });
 
-            // הפעלת מנגנון זיהוי הכתובת החדש והחסין
+            // Run parameter validation only when local dataset array compilation completes
             checkURLQuery();
         })
         .catch(error => {
-            document.getElementById('status').innerText = 'Error: ' + error.message;
+            document.getElementById('status').innerText = 'System Fault: ' + error.message;
             document.getElementById('status').style.color = '#b33939'; 
         });
 
@@ -183,7 +192,7 @@
         body.innerHTML = ''; 
         
         if (results.length === 0) {
-            body.innerHTML = `<tr><td style="text-align:center; color:#a69580;">No matching results found</td></tr>`;
+            body.innerHTML = `<tr><td style="text-align:center; color:#a69580;">No records map to your query</td></tr>`;
             return;
         }
         
@@ -199,7 +208,7 @@
                 if (finalUrl) {
                     window.location.href = finalUrl;
                 } else {
-                    alert('No valid link found for this result');
+                    alert('No navigation pointer assigned to this row');
                 }
             });
             
@@ -233,26 +242,23 @@
         renderResults(matchedItems);
     }
 
-    // מנגנון חילוץ גלובלי וחסין תקלות ישירות מטקסט הכתובת המלא
+    // Reliable URL Parameter parsing matrix matching the pattern directly
     function checkURLQuery() {
-        const currentHref = window.location.href;
-        let queryValue = '';
-
-        // סריקה ישירה של הטקסט בכתובת באמצעות ביטוי רגולרי לזיהוי q= או Q=
-        const match = currentHref.match(/[?&][qQ]=([^&#]+)/);
+        const currentQueryString = window.location.search;
+        const urlParams = new URLSearchParams(currentQueryString);
         
-        if (match && match[1]) {
-            queryValue = decodeURIComponent(match[1]);
-            const cleanQuery = cleanString(queryValue);
+        // Dynamic validation accepting both configurations (?q= and ?Q=)
+        let rawQuery = urlParams.get('q') || urlParams.get('Q');
+        
+        if (rawQuery) {
+            const parsedQuery = cleanString(decodeURIComponent(rawQuery));
+            const searchInput = document.getElementById('searchInput');
             
-            setTimeout(() => {
-                const searchInput = document.getElementById('searchInput');
-                if (searchInput) {
-                    searchInput.value = cleanQuery; 
-                    filterData(); 
-                    updateURLQuery(cleanQuery); 
-                }
-            }, 150);
+            if (searchInput) {
+                searchInput.value = parsedQuery;
+                filterData();
+                updateURLQuery(parsedQuery);
+            }
         }
     }
 
