@@ -126,6 +126,7 @@
         return text;
     }
 
+    // Identifies if a cell contains a URL or link structure
     function containsUrl(text) {
         const lowerText = text.toLowerCase();
         return lowerText.includes('http://') || 
@@ -135,6 +136,7 @@
                lowerText.includes('.com');
     }
 
+    // Regex-based extractor to isolate absolute URLs
     function extractRealUrl(rowArray) {
         const urlRegex = /(https?:\/\/[^\s|]+)/i;
         for (let i = 0; i < rowArray.length; i++) {
@@ -147,6 +149,7 @@
         return null;
     }
 
+    // Fetch CSV file from server
     fetch(csvUrl)
         .then(response => {
             if (!response.ok) {
@@ -231,9 +234,12 @@
         renderResults(matchedItems);
     }
 
+    // פונקציית בדיקה משופרת שתומכת גם ב-q וגם ב-Q
     function checkURLQuery() {
         const urlParams = new URLSearchParams(window.location.search);
-        let queryParam = urlParams.get('q');
+        
+        // בדיקה כפולה: מנסה לקבל את q, ואם הוא ריק מנסה לקבל את Q
+        let queryParam = urlParams.get('q') || urlParams.get('Q');
         
         if (queryParam) {
             queryParam = decodeURIComponent(queryParam);
@@ -244,8 +250,7 @@
                 if (searchInput) {
                     searchInput.value = cleanQuery; 
                     filterData(); 
-                    // התיקון כאן: דואג שהכתובת העליונה תציג את המילה שנבחרה בצורה מסודרת ומלאה
-                    updateURLQuery(cleanQuery); 
+                    updateURLQuery(cleanQuery); // מתקן את הכתובת למעלה ל-q הרגיל בסיום
                 }
             }, 150);
         }
@@ -255,9 +260,10 @@
         const url = new URL(window.location.href);
         const cleanQuery = cleanString(query);
         if (cleanQuery !== '') {
-            url.searchParams.set('q', cleanQuery);
+            url.searchParams.set('q', cleanQuery); // תמיד ישמור בכתובת באות קטנה לסטנדרט אינטרנטי
         } else {
             url.searchParams.delete('q'); 
+            url.searchParams.delete('Q'); 
         }
         window.history.replaceState({}, '', url);
     }
