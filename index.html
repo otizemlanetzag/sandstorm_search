@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>חיפוש וניווט בקובץ CSV</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            background-color: #f9f9f9;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: #fff;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        input[type="text"] {
+            width: 100%;
+            padding: 10px;
+            margin-bottom: 20px;
+            box-sizing: border-box;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            font-size: 16px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 10px;
+        }
+        th, td {
+            border: 1px solid #ddd;
+            padding: 10px;
+            text-align: right;
+        }
+        th {
+            background-color: #f2f2f2;
+        }
+        /* הפיכת השורות בטבלה לקליקביליות */
+        tbody tr {
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+        tbody tr:hover {
+            background-color: #e6f7ff; /* צבע רקע במעבר עכבר */
+        }
+        .status {
+            color: #666;
+            font-style: italic;
+            margin-bottom: 10px;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h2>חיפוש נתונים מתוך קובץ CSV</h2>
+    <div id="status" class="status">טוען נתונים...</div>
+    
+    <input type="text" id="searchInput" placeholder="הקלד כאן כדי לחפש..." disabled>
+    
+    <table id="resultsTable">
+        <thead id="tableHeader"></thead>
+        <tbody id="tableBody"></tbody>
+    </table>
+</div>
+
+<script>
+    const csvUrl = 'DATA.CSV'; // נתיב לקובץ ה-CSV שלך
+    let csvData = [];
+    let headers = [];
+
+    // פונקציה לפירוק שורת CSV למערך
+    function parseCSVRow(text) {
+        let p = '', r = [];
+        let q = false;
+        for (let i = 0; i < text.length; i++) {
+            let c = text[i];
+            if (c === '"') { q = !q; }
+            else if (c === ',' && !q) { r.push(p.trim()); p = ''; }
+            else { p += c; }
+        }
+        r.push(p.trim());
+        return r;
+    }
+
+    // טעינת הקובץ מהשרת
+    fetch(csvUrl)
+        .then(response => {
+            if (!response.ok) {
+                throw new Error('לא ניתן למצוא את הקובץ DATA.CSV או שקיימת שגיאת הרשאות');
+            }
+            return response.text();
+        })
+        .then(text => {
+            const lines = text.split('\n').map(line => line.trim()).filter(line => line.length > 0);
+            if (lines.length === 0) return;
+
+            // חילוץ הכותרות (השורה הראשונה)
+            headers = parseCSVRow(lines[0]);
+            
+            // חילוץ שורות הנתונים
+            csvData = lines.slice(1).map(line => parseCSVRow(line));
+
+            // בניית כותרת הטבלה
+            const headerHtml = '<tr>' + headers.map(h => `<th>${h}</th>`).join('') + '</tr>';
+            document.getElementById('tableHeader').innerHTML = headerHtml;
+
+            // הפעלת תיבת החיפוש
+            document.getElementById('status').innerText = `נטענו ${csvData.length} שורות בהצלחה. לחץ על שורה כדי לעבור לקישור.`;
+            const searchInput = document.getElementById('searchInput');
+            searchInput.disabled = false;
+            searchInput.addEventListener('input', filterData);
+            
+            // הצגת כל הנתונים בהתחלה
+            renderTable(csvData);
+        })
+        .catch(error => {
+            document.getElementById('status').innerText = 'שגיאה: ' + error.message;
+            document.getElementById('status').style.color = 'red';
+        });
+
+    // הצגת הנתונים בטבלה
+    function renderTable(data) {
+        const body = document.getElementById('tableBody');
+        body.innerHTML = ''; // ניקוי הטבלה
+        
+        if (data.length === 0) {
+            body.innerHTML = `<tr><td colspan="${headers.length || 1}" style="text-align:center;">לא נמצאו תוצאות מתאימות</td></tr>`;
+            return;
+        }
+        
+        data.forEach(row => {
+            const tr = document.createElement('tr');
+            
+            // יצירת התאים לכל עמודה בשורה
+            row.forEach(cell => {
+                const td = document.createElement('td');
+                td.textContent = cell;
+                tr.appendChild(td);
+            });
+            
+            // הוספת אירוע לחיצה לשורה כולה
+            tr.addEventListener('click', () => {
+                const url = row[1]; // עמודה 2 (אינדקס 1 במחשב) היא הקישור
+                if (url && (url.startsWith('http://') || url.startsWith('https://'))) {
+                    window.location.href = url; // פתיחה באותו לשונית. שנה ל-window.open(url, '_blank') אם תרצה לשונית חדשה
+                } else if (url) {
+                    // מקרה שהקישור חלקי או מקומי (למשל page2.html)
+                    window.location.href = url;
+                } else {
+                    alert('לא נמצא קישור תקין בשורה זו');
+                }
+            });
+            
+            body.appendChild(tr);
+        });
+    }
+
+    // סינון הנתונים לפי מה שהמשתמש הקליד
+    function filterData() {
+        const query = document.getElementById('searchInput').value.toLowerCase();
+        
+        const filtered = csvData.filter(row => {
+            // בודק אם הערך המחופש קיים באחד מתאי השורה
+            return row.some(cell => cell.toLowerCase().includes(query));
+        });
+        
+        renderTable(filtered);
+    }
+</script>
+
+</body>
+</html>
