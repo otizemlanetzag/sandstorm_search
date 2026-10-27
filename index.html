@@ -1,276 +1,160 @@
 <!DOCTYPE html>
 <html lang="en" dir="ltr">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>CSV Search Engine</title>
-    <style>
-        * { 
-            box-sizing: border-box; 
-            margin: 0; 
-            padding: 0; 
-            font-family: system-ui, -apple-system, sans-serif; 
-        }
-        body {
-            margin: 0;
-            padding: 28px clamp(12px, 3.7vw, 56px);
-            background: linear-gradient(135deg, #f3ede2 0%, #e7decb 100%); /* Soft sand gradient */
-            color: #4a3e3d; /* Dark brown-gray text */
-            min-height: 100vh;
-        }
-        .container {
-            max-width: 600px;
-            margin: 40px auto;
-            background: #fffdf9; /* Warm cream container */
-            padding: 30px 24px;
-            border-radius: 16px;
-            box-shadow: 0 12px 40px rgba(135, 120, 95, 0.15); /* Soft warm shadow */
-            border: 1px solid rgba(232, 222, 201, 0.6);
-        }
-        h2 {
-            color: #705e49; /* Earthy brown headings */
-            font-size: 24px;
-            font-weight: 600;
-            margin-bottom: 20px;
-            text-align: left;
-        }
-        .status {
-            color: #8c7b64;
-            font-style: italic;
-            margin-bottom: 15px;
-            font-size: 14px;
-            text-align: left;
-        }
-        input[type="text"] {
-            width: 100%;
-            padding: 14px 16px;
-            margin-bottom: 24px;
-            border: 1px solid #d9ccb4;
-            border-radius: 10px;
-            font-size: 16px;
-            background-color: #faf7f0;
-            color: #4a3e3d;
-            outline: none;
-            text-align: left;
-            transition: border-color 0.2s, box-shadow 0.2s;
-        }
-        input[type="text"]:focus {
-            border-color: #bfae93;
-            box-shadow: 0 0 0 3px rgba(191, 174, 147, 0.25);
-        }
-        table {
-            width: 100%;
-            border-collapse: collapse;
-            margin-top: 10px;
-        }
-        th, td {
-            border: 1px solid #ebdcb9;
-            padding: 14px 16px;
-            text-align: left;
-        }
-        th {
-            background-color: #efe6cf; /* Sandy header */
-            color: #61503b;
-            font-weight: 600;
-            font-size: 14px;
-            text-transform: uppercase;
-        }
-        tbody tr {
-            cursor: pointer;
-            transition: background-color 0.18s;
-        }
-        tbody tr:hover {
-            background-color: #f3ebda; 
-        }
-    </style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Sandstorm Search</title>
+  <style>
+    *{box-sizing:border-box}
+    body{margin:0;min-height:100vh;padding:28px 16px;background:linear-gradient(135deg,#f3ede2,#e7decb);color:#4a3e3d;font-family:system-ui,-apple-system,sans-serif}
+    .container{max-width:760px;margin:40px auto;background:#fffdf9;padding:28px 24px;border-radius:16px;box-shadow:0 12px 40px #87785f26;border:1px solid #e8dec9}
+    h1{font-size:26px;color:#705e49;margin:0 0 16px}
+    .status{color:#8c7b64;margin:0 0 16px;font-size:14px}
+    input{width:100%;padding:14px 16px;margin-bottom:18px;border:1px solid #d9ccb4;border-radius:10px;font-size:16px;background:#faf7f0;color:#4a3e3d}
+    input:focus{outline:2px solid #bfae93;outline-offset:1px}
+    table{width:100%;border-collapse:collapse;margin-top:8px}
+    th,td{border:1px solid #ebdcb9;padding:13px 14px;text-align:left;overflow-wrap:anywhere}
+    th{background:#efe6cf;color:#61503b;font-size:13px;text-transform:uppercase}
+    tbody tr{cursor:pointer}tbody tr:hover{background:#f3ebda}
+    .empty{color:#8c7b64;text-align:center;cursor:default}
+    @media(max-width:480px){.container{margin:8px auto;padding:20px 14px}h1{font-size:23px}}
+  </style>
 </head>
 <body>
-
-<div class="container">
-    <h2>Search Data from CSV</h2>
-    <div id="status" class="status">Loading data...</div>
-    
-    <!-- עטיפת תיבת החיפוש בטופס כדי לחסום לחלוטין הקלדה שוטפת ולחייב לחיצת ENTER -->
-    <form id="searchForm" action="#" onsubmit="return false;">
-        <input type="text" id="searchInput" placeholder="Type here and press ENTER to search...">
+  <main class="container">
+    <h1>Sandstorm Search</h1>
+    <p id="status" class="status" role="status">Loading search data…</p>
+    <form id="searchForm">
+      <input id="searchInput" type="search" placeholder="Type a search and press Enter…" aria-label="Search data" autocomplete="off">
     </form>
-    
-    <table id="resultsTable">
-        <thead>
-            <tr>
-                <th>Search Results</th>
-            </tr>
-        </thead>
-        <tbody id="tableBody"></tbody>
+    <table>
+      <thead><tr><th>Search results</th></tr></thead>
+      <tbody id="tableBody"></tbody>
     </table>
-</div>
-
+  </main>
 <script>
-    const csvUrl = 'DATA.CSV'; 
-    let csvData = [];
-    const searchInput = document.getElementById('searchInput');
-    const searchForm = document.getElementById('searchForm');
+  const csvUrl = './DATA.CSV';
+  const searchInput = document.getElementById('searchInput');
+  const searchForm = document.getElementById('searchForm');
+  const statusEl = document.getElementById('status');
+  const tableBody = document.getElementById('tableBody');
+  let csvData = [];
 
-    // חילוץ ישיר מהכתובת
-    function getUrlParameter() {
-        const urlString = window.location.href;
-        const match = urlString.match(/[?&][qQ]=([^&#]+)/);
-        if (match) {
-            return decodeURIComponent(match.replace(/\+/g, ' ')).trim();
-        }
-        return '';
+  function getQueryParameter() {
+    const params = new URLSearchParams(window.location.search);
+    // URLSearchParams keys are case-sensitive, so explicitly accept q, Q, or any casing.
+    for (const [key, value] of params.entries()) {
+      if (key.toLowerCase() === 'q' && value.trim()) return value.trim();
     }
+    return '';
+  }
 
-    // שתילת ערך התחלתי
-    const initialParam = getUrlParameter();
-    if (initialParam) {
-        searchInput.value = initialParam;
+  function parseCSV(text) {
+    const rows = [];
+    let row = [], cell = '', quoted = false;
+    for (let i = 0; i < text.length; i++) {
+      const ch = text[i];
+      if (ch === '"') {
+        if (quoted && text[i + 1] === '"') { cell += '"'; i++; }
+        else quoted = !quoted;
+      } else if (ch === ',' && !quoted) {
+        row.push(cell.trim()); cell = '';
+      } else if ((ch === '\n' || ch === '\r') && !quoted) {
+        if (ch === '\r' && text[i + 1] === '\n') i++;
+        row.push(cell.trim()); cell = '';
+        if (row.some(value => value !== '')) rows.push(row);
+        row = [];
+      } else cell += ch;
     }
+    row.push(cell.trim());
+    if (row.some(value => value !== '')) rows.push(row);
+    return rows;
+  }
 
-    function cleanString(str) {
-        if (!str) return '';
-        return str.toString().replace(/[\r\n]+/g, ' ').replace(/[\s\u200B\u00A0]+/g, ' ').trim();
+  function extractUrl(row) {
+    for (const value of row) {
+      const match = value.match(/https?:\/\/[^\s"'<>|,]+/i);
+      if (match) {
+        try {
+          const url = new URL(match[0]);
+          if (url.protocol === 'http:' || url.protocol === 'https:') return url.href;
+        } catch (_) {}
+      }
     }
+    return null;
+  }
 
-    function parseCSVRow(text) {
-        let p = '', r = [];
-        let q = false;
-        for (let i = 0; i < text.length; i++) {
-            let c = text[i];
-            if (c === '"') { q = !q; }
-            else if (c === ',' && !q) { r.push(cleanString(p)); p = ''; }
-            else { p += c; }
-        }
-        r.push(cleanString(p));
-        return r;
+  function showResults(results) {
+    tableBody.replaceChildren();
+    if (!results.length) {
+      const tr = document.createElement('tr');
+      const td = document.createElement('td');
+      td.className = 'empty';
+      td.textContent = searchInput.value.trim() ? 'No matching results found.' : 'Enter a search term to begin.';
+      tr.appendChild(td); tableBody.appendChild(tr);
+      return;
     }
-
-    function limitToTenWords(text) {
-        const words = text.split(/\s+/).filter(w => w.length > 0);
-        if (words.length > 10) {
-            return words.slice(0, 10).join(' ') + '...';
-        }
-        return text;
+    for (const result of results.slice(0, 100)) {
+      const tr = document.createElement('tr');
+      const td = document.createElement('td');
+      const words = result.text.split(/\s+/);
+      td.textContent = words.length > 10 ? words.slice(0, 10).join(' ') + '…' : result.text;
+      tr.appendChild(td);
+      const url = extractUrl(result.row);
+      if (url) {
+        tr.title = 'Open result';
+        tr.addEventListener('click', () => { window.location.href = url; });
+      } else {
+        tr.style.cursor = 'default';
+      }
+      tableBody.appendChild(tr);
     }
+  }
 
-    function containsUrl(text) {
-        const lowerText = text.toLowerCase();
-        return lowerText.includes('http://') || 
-               lowerText.includes('https://') || 
-               lowerText.includes('wikipedia.org') ||
-               lowerText.includes('.org') ||
-               lowerText.includes('.com');
+  function filterData() {
+    const query = searchInput.value.trim().toLocaleLowerCase();
+    if (!query) { showResults([]); return; }
+    const results = [];
+    for (const row of csvData) {
+      for (const cell of row) {
+        if (/https?:\/\//i.test(cell)) continue;
+        if (cell.toLocaleLowerCase().includes(query)) results.push({text:cell,row});
+      }
     }
+    showResults(results);
+    statusEl.textContent = results.length + ' matching result' + (results.length === 1 ? '' : 's') + '.';
+  }
 
-    function extractRealUrl(rowArray) {
-        const urlRegex = /(https?:\/\/[^\s|]+)/i;
-        for (let i = 0; i < rowArray.length; i++) {
-            const cell = rowArray[i];
-            const match = cell.match(urlRegex);
-            if (match) {
-                return match.trim();
-            }
-        }
-        return null;
-    }
+  searchForm.addEventListener('submit', event => {
+    event.preventDefault();
+    const url = new URL(window.location.href);
+    const query = searchInput.value.trim();
+    url.searchParams.delete('Q');
+    if (query) url.searchParams.set('q', query);
+    else url.searchParams.delete('q');
+    window.history.replaceState({}, '', url);
+    filterData();
+  });
 
-    // טעינת קובץ הנתונים מהשרת
-    fetch(csvUrl)
-        .then(response => {
-            if (!response.ok) throw new Error('DATA.CSV not found');
-            return response.text();
-        })
-        .then(text => {
-            const lines = text.split('\n').map(line => line.trim()).filter(line => line.length > 0);
-            if (lines.length === 0) return;
+  // Populate the input immediately, before the CSV request finishes.
+  searchInput.value = getQueryParameter();
 
-            csvData = lines.slice(1).map(line => parseCSVRow(line));
-            document.getElementById('status').innerText = `Data loaded successfully.`;
-            
-            // המנגנון החסין: האזנה אך ורק לשליחת הטופס (שקורה רק בלחיצת ENTER)
-            searchForm.addEventListener('submit', (event) => {
-                event.preventDefault(); // מניעת רענון הדף המסורתי של טפסים
-                filterData();
-                updateURLQuery(searchInput.value);
-            });
-
-            // הפעלת החיפוש האוטומטי רק אם העמוד נפתח ישירות עם קישור מוכן
-            if (searchInput.value) {
-                filterData();
-            }
-        })
-        .catch(error => {
-            document.getElementById('status').innerText = 'Error: ' + error.message;
-            document.getElementById('status').style.color = '#b33939'; 
-        });
-
-    function renderResults(results) {
-        const body = document.getElementById('tableBody');
-        body.innerHTML = ''; 
-        
-        if (results.length === 0) {
-            body.innerHTML = `<tr><td style="text-align:center; color:#a69580;">No matching results found</td></tr>`;
-            return;
-        }
-        
-        results.forEach(item => {
-            const tr = document.createElement('tr');
-            const td = document.createElement('td');
-            
-            td.textContent = limitToTenWords(item.matchedText); 
-            tr.appendChild(td);
-            
-            tr.addEventListener('click', () => {
-                const finalUrl = extractRealUrl(item.originalRow);
-                if (finalUrl) {
-                    window.location.href = finalUrl;
-                } else {
-                    alert('No valid link found for this result');
-                }
-            });
-            
-            body.appendChild(tr);
-        });
-    }
-
-    function filterData() {
-        const query = cleanString(searchInput.value).toLowerCase();
-        
-        if (query === '') {
-            renderResults([]);
-            return;
-        }
-        
-        const matchedItems = [];
-        
-        csvData.forEach(row => {
-            row.forEach((cell) => {
-                if (containsUrl(cell)) return; 
-
-                if (cell.toLowerCase().includes(query)) {
-                    matchedItems.push({
-                        matchedText: cell,   
-                        originalRow: row     
-                    });
-                }
-            });
-        });
-        
-        renderResults(matchedItems);
-    }
-
-    function updateURLQuery(query) {
-        const url = new URL(window.location.href);
-        const cleanQuery = cleanString(query);
-        if (cleanQuery !== '') {
-            url.searchParams.set('q', cleanQuery); 
-        } else {
-            url.searchParams.delete('q'); 
-            url.searchParams.delete('Q'); 
-        }
-        window.history.replaceState({}, '', url);
-    }
+  fetch(csvUrl)
+    .then(response => {
+      if (!response.ok) throw new Error('Could not load DATA.CSV (HTTP ' + response.status + ').');
+      return response.text();
+    })
+    .then(text => {
+      const rows = parseCSV(text);
+      csvData = rows.length > 1 ? rows.slice(1) : rows;
+      statusEl.textContent = 'Search data loaded.';
+      if (searchInput.value.trim()) filterData();
+      else showResults([]);
+    })
+    .catch(error => {
+      statusEl.textContent = error.message;
+      statusEl.style.color = '#b33939';
+    });
 </script>
-
 </body>
 </html>
