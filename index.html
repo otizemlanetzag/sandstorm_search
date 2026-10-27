@@ -162,7 +162,7 @@
                 updateURLQuery(searchInput.value);
             });
 
-            // בדיקת פרמטר הכתובת מתבצעת מיד כאן
+            // הפעלת הבדיקה רק לאחר שהנתונים מוכנים לחלוטין בזיכרון
             checkURLQuery();
         })
         .catch(error => {
@@ -225,15 +225,17 @@
         renderResults(matchedItems);
     }
 
-    // פונקציה מתוקנת לבדיקת הכתובת - ללא תלות באותיות גדולות/קטנות
+    // פונקציית בדיקה משופרת ומאובטחת עם השהייה קלה לסנכרון מלא
     function checkURLQuery() {
         const urlParams = new URLSearchParams(window.location.search);
         const queryParam = urlParams.get('q');
         
         if (queryParam) {
-            const searchInput = document.getElementById('searchInput');
-            searchInput.value = queryParam; // מזין את המילה המדויקת מהלינק לתיבה
-            filterData(); // מריץ את החיפוש (שממילא הופך הכל ל-toLowerCase)
+            setTimeout(() => {
+                const searchInput = document.getElementById('searchInput');
+                searchInput.value = queryParam; 
+                filterData(); 
+            }, 50); // השהייה של 50 מילישניות ליציבות מוחלטת
         }
     }
 
