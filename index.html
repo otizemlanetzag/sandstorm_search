@@ -117,13 +117,25 @@
         return text;
     }
 
-    // פונקציית עזר לבדיקה האם הטקסט הוא קישור אינטרנט
-    function isUrl(text) {
+    // פונקציה חכמה שבודקת האם התא מכיל כתובת אינטרנט או קישור ויקיפדיה
+    function containsUrl(text) {
         const lowerText = text.toLowerCase();
-        return lowerText.startsWith('http://') || 
-               lowerText.startsWith('https://') || 
-               lowerText.startsWith('www.') ||
-               /\.[a-z]{2,4}(\/|$)/i.test(lowerText); // בדיקה אם מכיל סיומת כמו .com, .html וכו'
+        return lowerText.includes('http://') || 
+               lowerText.includes('https://') || 
+               lowerText.includes('wikipedia.org') ||
+               lowerText.includes('.org') ||
+               lowerText.includes('.com');
+    }
+
+    // פונקציה שמחלצת את הקישור האמיתי מתוך התא המורכב (למשל אחרי ה-|)
+    function extractRealUrl(text) {
+        if (text.includes('|')) {
+            const parts = text.split('|');
+            // מחפש את החלק שמכיל את הכתובת
+            const urlPart = parts.find(p => p.includes('http://') || p.includes('https://') || p.includes('wikipedia.org'));
+            if (urlPart) return urlPart.trim();
+        }
+        return text.trim();
     }
 
     // טעינת הקובץ מהשרת
@@ -138,10 +150,8 @@
             const lines = text.split('\n').map(line => line.trim()).filter(line => line.length > 0);
             if (lines.length === 0) return;
 
-            // שמירת הנתונים ללא שורת הכותרות
             csvData = lines.slice(1).map(line => parseCSVRow(line));
 
-            // הפעלת תיבת החיפוש
             document.getElementById('status').innerText = `הנתונים נטענו בהצלחה. הקלד כדי לחפש.`;
             const searchInput = document.getElementById('searchInput');
             searchInput.disabled = false;
@@ -155,7 +165,7 @@
     // הצגת התאים שנמצאו בטבלה
     function renderResults(results) {
         const body = document.getElementById('tableBody');
-        body.innerHTML = ''; // ניקוי הטבלה
+        body.innerHTML = ''; 
         
         if (results.length === 0) {
             body.innerHTML = `<tr><td style="text-align:center; color:#a69580;">לא נמצאו תוצאות מתאימות</td></tr>`;
@@ -169,19 +179,15 @@
             td.textContent = limitToTenWords(item.matchedText); 
             tr.appendChild(td);
             
-            // דינמי: מחפש את הקישור האמיתי בתוך השורה המקורית ומנווט אליו
+            // לחיצה תחלץ את הקישור ותנווט אליו
             tr.addEventListener('click', () => {
-                const targetUrl = item.originalRow.find(cell => isUrl(cell));
-                if (targetUrl) {
-                    window.location.href = targetUrl.startsWith('http') ? targetUrl : 'https://' + targetUrl;
+                // מחפש בשורה את התא שמכיל קישור
+                const rawUrlCell = item.originalRow.find(cell => containsUrl(cell));
+                if (rawUrlCell) {
+                    const finalUrl = extractRealUrl(rawUrlCell);
+                    window.location.href = finalUrl;
                 } else {
-                    // אם אין קישור מלא עם http, מנסה לקחת את העמודה השנייה כגיבוי (אינדקס 1)
-                    const backupUrl = item.originalRow[1];
-                    if (backupUrl) {
-                        window.location.href = backupUrl;
-                    } else {
-                        alert('לא נמצא קישור תואם עבור תוצאה זו');
-                    }
+                    alert('לא נמצא קישור תואם עבור תוצאה זו');
                 }
             });
             
@@ -189,7 +195,7 @@
         });
     }
 
-    // סינון ובניית רשימת התאים המתאימים - תוך התעלמות מכל תא שהוא קישור
+    // סינון התאים תוך חסימת תאים שמכילים קישורים
     function filterData() {
         const query = document.getElementById('searchInput').value.toLowerCase().trim();
         
@@ -202,8 +208,8 @@
         
         csvData.forEach(row => {
             row.forEach((cell) => {
-                // חסימת קישורים: אם התא הספציפי הזה הוא כתובת אינטרנט, אל תציג אותו בתוצאות החיפוש
-                if (isUrl(cell)) return; 
+                // חסימה: אם התא מכיל כתובת אינטרנט/ויקיפדיה, אל תציג אותו בתוצאות החיפוש
+                if (containsUrl(cell)) return; 
 
                 if (cell.toLowerCase().includes(query)) {
                     matchedItems.push({
