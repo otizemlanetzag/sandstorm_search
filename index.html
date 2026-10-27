@@ -157,13 +157,13 @@
             const searchInput = document.getElementById('searchInput');
             searchInput.disabled = false;
             
-            // האזנה להקלדה ידנית של המשתמש
+            // המערכת מקשיבה להקלדה ידנית של המשתמש ומעדכנת את הכתובת דינמית
             searchInput.addEventListener('input', () => {
                 filterData();
                 updateURLQuery(searchInput.value);
             });
 
-            // בדיקה האם יש פרמטר ?q= בכתובת האתר בזמן הטעינה
+            // הפעלת הבדיקה האוטומטית מיד בסיום טעינת הקובץ
             checkURLQuery();
         })
         .catch(error => {
@@ -226,27 +226,27 @@
         renderResults(matchedItems);
     }
 
-    // פונקציה שבודקת ומפעילה את החיפוש מתוך הכתובת (URL) בזמן טעינת הדף
+    // פונקציה לבדיקת הכתובת בעת כניסה ראשונית לעמוד
     function checkURLQuery() {
         const urlParams = new URLSearchParams(window.location.search);
         const queryParam = urlParams.get('q');
         
         if (queryParam) {
+            console.log("Found automated query parameter:", queryParam);
             const searchInput = document.getElementById('searchInput');
-            searchInput.value = queryParam; // מזין את המילה לתיבת החיפוש
-            filterData(); // מריץ את הסינון אוטומטית
+            searchInput.value = queryParam; 
+            filterData(); 
         }
     }
 
-    // פונקציה שמעדכנת את הכתובת בדפדפן בזמן שהמשתמש מקליד (בלי לרענן את הדף)
+    // פונקציה לעדכון שורת הכתובת ללא רענון העמוד בזמן ההקלדה
     function updateURLQuery(query) {
         const url = new URL(window.location.href);
         if (query.trim() !== '') {
             url.searchParams.set('q', query.trim());
         } else {
-            url.searchParams.delete('q'); // מוחק את הפרמטר אם התיבה ריקה
+            url.searchParams.delete('q'); 
         }
-        // עדכון שורת הכתובת בהיסטוריית הדפדפן
         window.history.replaceState({}, '', url);
     }
 </script>
