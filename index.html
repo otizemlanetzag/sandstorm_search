@@ -157,13 +157,12 @@
             const searchInput = document.getElementById('searchInput');
             searchInput.disabled = false;
             
-            // המערכת מקשיבה להקלדה ידנית של המשתמש ומעדכנת את הכתובת דינמית
             searchInput.addEventListener('input', () => {
                 filterData();
                 updateURLQuery(searchInput.value);
             });
 
-            // הפעלת הבדיקה האוטומטית מיד בסיום טעינת הקובץ
+            // בדיקת פרמטר הכתובת מתבצעת מיד כאן
             checkURLQuery();
         })
         .catch(error => {
@@ -226,20 +225,18 @@
         renderResults(matchedItems);
     }
 
-    // פונקציה לבדיקת הכתובת בעת כניסה ראשונית לעמוד
+    // פונקציה מתוקנת לבדיקת הכתובת - ללא תלות באותיות גדולות/קטנות
     function checkURLQuery() {
         const urlParams = new URLSearchParams(window.location.search);
         const queryParam = urlParams.get('q');
         
         if (queryParam) {
-            console.log("Found automated query parameter:", queryParam);
             const searchInput = document.getElementById('searchInput');
-            searchInput.value = queryParam; 
-            filterData(); 
+            searchInput.value = queryParam; // מזין את המילה המדויקת מהלינק לתיבה
+            filterData(); // מריץ את החיפוש (שממילא הופך הכל ל-toLowerCase)
         }
     }
 
-    // פונקציה לעדכון שורת הכתובת ללא רענון העמוד בזמן ההקלדה
     function updateURLQuery(query) {
         const url = new URL(window.location.href);
         if (query.trim() !== '') {
