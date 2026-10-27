@@ -104,7 +104,7 @@
             headers = parseCSVRow(lines[0]);
             
             // חילוץ שורות הנתונים
-            csvData = lines.slice(1).map(line => parseCSVRow(line));
+            csvData = lines.slice(0).map(line => parseCSVRow(line));
 
             // בניית כותרת הטבלה
             const headerHtml = '<tr>' + headers.map(h => `<th>${h}</th>`).join('') + '</tr>';
