@@ -17,13 +17,14 @@
     th{background:#efe6cf;color:#61503b;font-size:13px;text-transform:uppercase}
     tbody tr{cursor:pointer}tbody tr:hover{background:#f3ebda}
     .empty{color:#8c7b64;text-align:center;cursor:default}
+    .result-url{display:block;color:#8c7b64;font-size:12px;margin-top:5px;overflow-wrap:anywhere}
     @media(max-width:480px){.container{margin:8px auto;padding:20px 14px}h1{font-size:23px}}
   </style>
 </head>
 <body>
   <main class="container">
     <h1>Sandstorm Search</h1>
-    <p id="status" class="status" role="status">Loading search data…</p>
+    <p id="status" class="status" role="status">Connecting to the search database…</p>
     <form id="searchForm">
       <input id="searchInput" type="search" placeholder="Type a search and press Enter…" aria-label="Search data" autocomplete="off">
     </form>
@@ -33,55 +34,146 @@
     </table>
   </main>
 <script>
-  const csvUrl = './DATA.CSV';
+  // Hugging Face dataset containing gzip-compressed SVG database files.
+  const DATASET_ID = 'infinity-non-comercial/sandstormsearchdatabase';
+  const HF_API = 'https://huggingface.co/api/datasets/' + DATASET_ID;
+  const HF_FILES = 'https://huggingface.co/datasets/' + DATASET_ID + '/resolve/main/';
+
   const searchInput = document.getElementById('searchInput');
   const searchForm = document.getElementById('searchForm');
   const statusEl = document.getElementById('status');
   const tableBody = document.getElementById('tableBody');
-  let csvData = [];
+  let searchRecords = [];
+  let loadedFiles = 0;
+  let totalFiles = 0;
 
   function getQueryParameter() {
     const params = new URLSearchParams(window.location.search);
-    // URLSearchParams keys are case-sensitive, so explicitly accept q, Q, or any casing.
     for (const [key, value] of params.entries()) {
       if (key.toLowerCase() === 'q' && value.trim()) return value.trim();
     }
     return '';
   }
 
-  function parseCSV(text) {
-    const rows = [];
-    let row = [], cell = '', quoted = false;
-    for (let i = 0; i < text.length; i++) {
-      const ch = text[i];
-      if (ch === '"') {
-        if (quoted && text[i + 1] === '"') { cell += '"'; i++; }
-        else quoted = !quoted;
-      } else if (ch === ',' && !quoted) {
-        row.push(cell.trim()); cell = '';
-      } else if ((ch === '\n' || ch === '\r') && !quoted) {
-        if (ch === '\r' && text[i + 1] === '\n') i++;
-        row.push(cell.trim()); cell = '';
-        if (row.some(value => value !== '')) rows.push(row);
-        row = [];
-      } else cell += ch;
-    }
-    row.push(cell.trim());
-    if (row.some(value => value !== '')) rows.push(row);
-    return rows;
+  function setStatus(message, isError = false) {
+    statusEl.textContent = message;
+    statusEl.style.color = isError ? '#b33939' : '#8c7b64';
   }
 
-  function extractUrl(row) {
-    for (const value of row) {
-      const match = value.match(/https?:\/\/[^\s"'<>|,]+/i);
-      if (match) {
+  function safeText(value) {
+    return (value || '').replace(/\\s+/g, ' ').trim();
+  }
+
+  function getHref(element) {
+    if (!element || !element.getAttribute) return '';
+    return element.getAttribute('href') ||
+      element.getAttribute('xlink:href') ||
+      element.getAttributeNS('http://www.w3.org/1999/xlink', 'href') || '';
+  }
+
+  function addRecord(text, url, source) {
+    text = safeText(text);
+    if (!text && !url) return;
+    if (url && !/^https?:\\/\\//i.test(url)) {
+      try { url = new URL(url, source).href; } catch (_) { url = ''; }
+    }
+    if (url && !/^https?:\\/\\//i.test(url)) url = '';
+    searchRecords.push({ text: text || url, url, source });
+  }
+
+  function parseSvg(svgText, source) {
+    const doc = new DOMParser().parseFromString(svgText, 'image/svg+xml');
+    if (doc.querySelector('parsererror')) throw new Error('Invalid SVG document');
+
+    // An SVG database often stores each indexed page as a linked group.
+    const anchors = Array.from(doc.querySelectorAll('a'));
+    for (const anchor of anchors) {
+      const text = [
+        anchor.textContent,
+        anchor.getAttribute('aria-label'),
+        anchor.getAttribute('title')
+      ].filter(Boolean).join(' ');
+      addRecord(text, getHref(anchor), source);
+    }
+
+    // Also index visible SVG text, titles, descriptions and labels.
+    const textNodes = Array.from(doc.querySelectorAll('text, title, desc'));
+    for (const node of textNodes) {
+      if (node.closest('a')) continue;
+      addRecord(node.textContent, '', source);
+    }
+
+    // Some exporters put the page URL on a group instead of an <a>.
+    if (!anchors.length) {
+      const rootUrl = getHref(doc.documentElement);
+      const content = safeText(doc.documentElement.textContent);
+      if (content || rootUrl) addRecord(content, rootUrl, source);
+    }
+  }
+
+  async function decompressGzip(buffer) {
+    if (typeof DecompressionStream === 'undefined') {
+      throw new Error('This browser does not support gzip decompression. Please use a recent version of Chrome, Edge, Firefox or Safari.');
+    }
+    const stream = new Blob([buffer]).stream().pipeThrough(new DecompressionStream('gzip'));
+    return await new Response(stream).text();
+  }
+
+  function encodeRepoPath(path) {
+    return path.split('/').map(encodeURIComponent).join('/');
+  }
+
+  async function loadOneFile(file) {
+    const url = HF_FILES + encodeRepoPath(file);
+    const response = await fetch(url);
+    if (!response.ok) throw new Error(file + ' (HTTP ' + response.status + ')');
+    const compressed = await response.arrayBuffer();
+    const svgText = await decompressGzip(compressed);
+    parseSvg(svgText, url);
+    loadedFiles++;
+    setStatus('Loaded ' + loadedFiles + ' of ' + totalFiles + ' database files…');
+  }
+
+  async function loadDatabase() {
+    setStatus('Getting the list of database files from Hugging Face…');
+    const response = await fetch(HF_API, { headers: { Accept: 'application/json' } });
+    if (!response.ok) throw new Error('Could not access the Hugging Face dataset (HTTP ' + response.status + ').');
+    const metadata = await response.json();
+    const files = (metadata.siblings || [])
+      .map(item => item.rfilename)
+      .filter(name => typeof name === 'string' && name.toLowerCase().endsWith('.gz'));
+
+    if (!files.length) throw new Error('No .gz files were found in the Hugging Face dataset.');
+
+    totalFiles = files.length;
+    setStatus('Found ' + totalFiles + ' compressed files. Downloading and restoring SVG data…');
+
+    // Limit parallel downloads so a large database does not overwhelm the browser.
+    let nextIndex = 0;
+    const workerCount = Math.min(4, files.length);
+    const errors = [];
+    async function worker() {
+      while (nextIndex < files.length) {
+        const index = nextIndex++;
         try {
-          const url = new URL(match[0]);
-          if (url.protocol === 'http:' || url.protocol === 'https:') return url.href;
-        } catch (_) {}
+          await loadOneFile(files[index]);
+        } catch (error) {
+          errors.push(files[index] + ': ' + (error.message || String(error)));
+        }
       }
     }
-    return null;
+    await Promise.all(Array.from({ length: workerCount }, () => worker()));
+
+    if (!searchRecords.length) {
+      throw new Error(errors.length
+        ? 'The .gz files were found, but none could be decoded as SVG. First error: ' + errors[0]
+        : 'The database files did not contain searchable SVG text.');
+    }
+
+    const suffix = errors.length ? ' (' + errors.length + ' files could not be loaded)' : '';
+    setStatus('Search database ready: ' + loadedFiles + '/' + totalFiles + ' files, ' + searchRecords.length + ' searchable records' + suffix + '.');
+    if (searchInput.value.trim()) filterData();
+    else showResults([]);
   }
 
   function showResults(results) {
@@ -91,70 +183,62 @@
       const td = document.createElement('td');
       td.className = 'empty';
       td.textContent = searchInput.value.trim() ? 'No matching results found.' : 'Enter a search term to begin.';
-      tr.appendChild(td); tableBody.appendChild(tr);
+      tr.appendChild(td);
+      tableBody.appendChild(tr);
       return;
     }
+
     for (const result of results.slice(0, 100)) {
       const tr = document.createElement('tr');
       const td = document.createElement('td');
-      const words = result.text.split(/\s+/);
-      td.textContent = words.length > 10 ? words.slice(0, 10).join(' ') + '…' : result.text;
-      tr.appendChild(td);
-      const url = extractUrl(result.row);
-      if (url) {
+      td.textContent = result.text || result.url || 'Untitled result';
+      if (result.url) {
+        const link = document.createElement('span');
+        link.className = 'result-url';
+        link.textContent = result.url;
+        td.appendChild(link);
         tr.title = 'Open result';
-        tr.addEventListener('click', () => { window.location.href = url; });
+        tr.addEventListener('click', () => window.open(result.url, '_blank', 'noopener,noreferrer'));
       } else {
         tr.style.cursor = 'default';
       }
+      tr.appendChild(document.createTextNode(''));
       tableBody.appendChild(tr);
     }
   }
 
   function filterData() {
     const query = searchInput.value.trim().toLocaleLowerCase();
-    if (!query) { showResults([]); return; }
-    const results = [];
-    for (const row of csvData) {
-      for (const cell of row) {
-        if (/https?:\/\//i.test(cell)) continue;
-        if (cell.toLocaleLowerCase().includes(query)) results.push({text:cell,row});
-      }
+    if (!query) {
+      showResults([]);
+      setStatus('Search database ready: ' + searchRecords.length + ' searchable records.');
+      return;
     }
+    const terms = query.split(/\\s+/).filter(Boolean);
+    const results = searchRecords.filter(record => {
+      const haystack = (record.text + ' ' + record.url).toLocaleLowerCase();
+      return terms.every(term => haystack.includes(term));
+    });
     showResults(results);
-    statusEl.textContent = results.length + ' matching result' + (results.length === 1 ? '' : 's') + '.';
+    setStatus(results.length + ' matching result' + (results.length === 1 ? '' : 's') + '.');
   }
 
   searchForm.addEventListener('submit', event => {
     event.preventDefault();
     const url = new URL(window.location.href);
     const query = searchInput.value.trim();
-    url.searchParams.delete('Q');
+    for (const key of Array.from(url.searchParams.keys())) {
+      if (key.toLowerCase() === 'q') url.searchParams.delete(key);
+    }
     if (query) url.searchParams.set('q', query);
-    else url.searchParams.delete('q');
     window.history.replaceState({}, '', url);
     filterData();
   });
 
-  // Populate the input immediately, before the CSV request finishes.
   searchInput.value = getQueryParameter();
-
-  fetch(csvUrl)
-    .then(response => {
-      if (!response.ok) throw new Error('Could not load DATA.CSV (HTTP ' + response.status + ').');
-      return response.text();
-    })
-    .then(text => {
-      const rows = parseCSV(text);
-      csvData = rows.length > 1 ? rows.slice(1) : rows;
-      statusEl.textContent = 'Search data loaded.';
-      if (searchInput.value.trim()) filterData();
-      else showResults([]);
-    })
-    .catch(error => {
-      statusEl.textContent = error.message;
-      statusEl.style.color = '#b33939';
-    });
+  loadDatabase().catch(error => {
+    setStatus(error.message || 'Could not load the search database.', true);
+  });
 </script>
   <a href="https://github.com/otizemlanetzag/sandstorm_search">github</a>
 </body>
