@@ -34,7 +34,7 @@
     </table>
   </main>
 <script>
-  // Hugging Face dataset containing gzip-compressed SVG database files.
+  // Hugging Face dataset containing gzip-compressed CSV database files.
   const DATASET_ID = 'infinity-non-comercial/sandstormsearchdatabase';
   const HF_API = 'https://huggingface.co/api/datasets/' + DATASET_ID;
   const HF_FILES = 'https://huggingface.co/datasets/' + DATASET_ID + '/resolve/main/';
@@ -60,54 +60,57 @@
     statusEl.style.color = isError ? '#b33939' : '#8c7b64';
   }
 
-  function safeText(value) {
-    return (value || '').replace(/\\s+/g, ' ').trim();
+  function parseCSV(text) {
+    const rows = [];
+    let row = [], cell = '', quoted = false;
+    for (let i = 0; i < text.length; i++) {
+      const ch = text[i];
+      if (ch === '"') {
+        if (quoted && text[i + 1] === '"') { cell += '"'; i++; }
+        else quoted = !quoted;
+      } else if (ch === ',' && !quoted) {
+        row.push(cell.trim()); cell = '';
+      } else if ((ch === '\n' || ch === '\r') && !quoted) {
+        if (ch === '\r' && text[i + 1] === '\n') i++;
+        row.push(cell.trim()); cell = '';
+        if (row.some(value => value !== '')) rows.push(row);
+        row = [];
+      } else {
+        cell += ch;
+      }
+    }
+    row.push(cell.trim());
+    if (row.some(value => value !== '')) rows.push(row);
+    return rows;
   }
 
-  function getHref(element) {
-    if (!element || !element.getAttribute) return '';
-    return element.getAttribute('href') ||
-      element.getAttribute('xlink:href') ||
-      element.getAttributeNS('http://www.w3.org/1999/xlink', 'href') || '';
+  function extractUrl(row) {
+    for (const value of row) {
+      const match = value.match(/https?:\/\/[^\s"'<>|,]+/i);
+      if (match) {
+        try {
+          const url = new URL(match[0]);
+          if (url.protocol === 'http:' || url.protocol === 'https:') return url.href;
+        } catch (_) {}
+      }
+    }
+    return '';
   }
 
-  function addRecord(text, url, source) {
-    text = safeText(text);
-    if (!text && !url) return;
-    if (url && !/^https?:\\/\\//i.test(url)) {
-      try { url = new URL(url, source).href; } catch (_) { url = ''; }
-    }
-    if (url && !/^https?:\\/\\//i.test(url)) url = '';
-    searchRecords.push({ text: text || url, url, source });
-  }
+  function indexCsv(csvText, source) {
+    const rows = parseCSV(csvText);
+    if (!rows.length) return;
 
-  function parseSvg(svgText, source) {
-    const doc = new DOMParser().parseFromString(svgText, 'image/svg+xml');
-    if (doc.querySelector('parsererror')) throw new Error('Invalid SVG document');
-
-    // An SVG database often stores each indexed page as a linked group.
-    const anchors = Array.from(doc.querySelectorAll('a'));
-    for (const anchor of anchors) {
-      const text = [
-        anchor.textContent,
-        anchor.getAttribute('aria-label'),
-        anchor.getAttribute('title')
-      ].filter(Boolean).join(' ');
-      addRecord(text, getHref(anchor), source);
-    }
-
-    // Also index visible SVG text, titles, descriptions and labels.
-    const textNodes = Array.from(doc.querySelectorAll('text, title, desc'));
-    for (const node of textNodes) {
-      if (node.closest('a')) continue;
-      addRecord(node.textContent, '', source);
-    }
-
-    // Some exporters put the page URL on a group instead of an <a>.
-    if (!anchors.length) {
-      const rootUrl = getHref(doc.documentElement);
-      const content = safeText(doc.documentElement.textContent);
-      if (content || rootUrl) addRecord(content, rootUrl, source);
+    // Skip a header row when the file has multiple rows, matching the old CSV behavior.
+    const dataRows = rows.length > 1 ? rows.slice(1) : rows;
+    for (const row of dataRows) {
+      const url = extractUrl(row);
+      const text = row
+        .filter(value => !/https?:\/\//i.test(value))
+        .join(' ')
+        .replace(/\s+/g, ' ')
+        .trim();
+      if (text || url) searchRecords.push({ text: text || url, url, source });
     }
   }
 
@@ -128,8 +131,8 @@
     const response = await fetch(url);
     if (!response.ok) throw new Error(file + ' (HTTP ' + response.status + ')');
     const compressed = await response.arrayBuffer();
-    const svgText = await decompressGzip(compressed);
-    parseSvg(svgText, url);
+    const csvText = await decompressGzip(compressed);
+    indexCsv(csvText, url);
     loadedFiles++;
     setStatus('Loaded ' + loadedFiles + ' of ' + totalFiles + ' database files…');
   }
@@ -146,9 +149,8 @@
     if (!files.length) throw new Error('No .gz files were found in the Hugging Face dataset.');
 
     totalFiles = files.length;
-    setStatus('Found ' + totalFiles + ' compressed files. Downloading and restoring SVG data…');
+    setStatus('Found ' + totalFiles + ' compressed files. Downloading and decompressing CSV data…');
 
-    // Limit parallel downloads so a large database does not overwhelm the browser.
     let nextIndex = 0;
     const workerCount = Math.min(4, files.length);
     const errors = [];
@@ -166,8 +168,8 @@
 
     if (!searchRecords.length) {
       throw new Error(errors.length
-        ? 'The .gz files were found, but none could be decoded as SVG. First error: ' + errors[0]
-        : 'The database files did not contain searchable SVG text.');
+        ? 'The .gz files were found, but no searchable CSV records could be loaded. First error: ' + errors[0]
+        : 'The decompressed CSV files did not contain searchable records.');
     }
 
     const suffix = errors.length ? ' (' + errors.length + ' files could not be loaded)' : '';
@@ -202,7 +204,6 @@
       } else {
         tr.style.cursor = 'default';
       }
-      tr.appendChild(document.createTextNode(''));
       tableBody.appendChild(tr);
     }
   }
@@ -214,7 +215,7 @@
       setStatus('Search database ready: ' + searchRecords.length + ' searchable records.');
       return;
     }
-    const terms = query.split(/\\s+/).filter(Boolean);
+    const terms = query.split(/\s+/).filter(Boolean);
     const results = searchRecords.filter(record => {
       const haystack = (record.text + ' ' + record.url).toLocaleLowerCase();
       return terms.every(term => haystack.includes(term));
