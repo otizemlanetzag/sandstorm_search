@@ -15,9 +15,15 @@
     table{width:100%;border-collapse:collapse;margin-top:8px}
     th,td{border:1px solid #ebdcb9;padding:13px 14px;text-align:left;overflow-wrap:anywhere}
     th{background:#efe6cf;color:#61503b;font-size:13px;text-transform:uppercase}
-    tbody tr{cursor:pointer}tbody tr:hover{background:#f3ebda}
+    tbody{display:table-row-group;visibility:visible}
+    tbody tr{display:table-row;cursor:pointer;background:#fffdf9}
+    tbody td{display:table-cell;min-height:48px;height:auto;color:#4a3e3d;background:#fffdf9;line-height:1.5;vertical-align:top}
+    tbody tr:hover td{background:#f3ebda}
     .empty{color:#8c7b64;text-align:center;cursor:default}
+    .result-title{display:block;color:#4a3e3d;font-weight:600;overflow-wrap:anywhere}
     .result-url{display:block;color:#8c7b64;font-size:12px;margin-top:5px;overflow-wrap:anywhere}
+    .result-link{color:inherit;text-decoration:none;display:block}
+    .result-link:hover .result-title{text-decoration:underline}
     @media(max-width:480px){.container{margin:8px auto;padding:20px 14px}h1{font-size:23px}}
   </style>
 </head>
@@ -189,33 +195,44 @@
   }
 
   function showResults(results) {
-    tableBody.replaceChildren();
+    const fragment = document.createDocumentFragment();
     if (!results.length) {
       const tr = document.createElement('tr');
       const td = document.createElement('td');
+      td.colSpan = 1;
       td.className = 'empty';
       td.textContent = searchInput.value.trim() ? 'No matching results found.' : 'Enter a search term to begin.';
       tr.appendChild(td);
-      tableBody.appendChild(tr);
-      return;
-    }
-
-    for (const result of results.slice(0, 100)) {
-      const tr = document.createElement('tr');
-      const td = document.createElement('td');
-      td.textContent = result.text || result.url || 'Untitled result';
-      if (result.url) {
-        const link = document.createElement('span');
-        link.className = 'result-url';
-        link.textContent = result.url;
-        td.appendChild(link);
-        tr.title = 'Open result';
-        tr.addEventListener('click', () => window.open(result.url, '_blank', 'noopener,noreferrer'));
-      } else {
-        tr.style.cursor = 'default';
+      fragment.appendChild(tr);
+    } else {
+      for (const result of results.slice(0, 100)) {
+        const tr = document.createElement('tr');
+        const td = document.createElement('td');
+        const title = document.createElement('span');
+        title.className = 'result-title';
+        title.textContent = result.text || result.url || 'Untitled result';
+        if (result.url) {
+          const link = document.createElement('a');
+          link.className = 'result-link';
+          link.href = result.url;
+          link.target = '_blank';
+          link.rel = 'noopener noreferrer';
+          link.appendChild(title);
+          td.appendChild(link);
+          const address = document.createElement('span');
+          address.className = 'result-url';
+          address.textContent = result.url;
+          td.appendChild(address);
+        } else {
+          td.appendChild(title);
+        }
+        tr.appendChild(td);
+        fragment.appendChild(tr);
       }
-      tableBody.appendChild(tr);
     }
+    tableBody.replaceChildren(fragment);
+    tableBody.style.display = 'table-row-group';
+    tableBody.style.visibility = 'visible';
   }
 
   function filterData() {
