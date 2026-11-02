@@ -46,6 +46,8 @@
   let searchRecords = [];
   let loadedFiles = 0;
   let totalFiles = 0;
+  let loadErrors = 0;
+  let cacheStore = null;
 
   function getQueryParameter() {
     const params = new URLSearchParams(window.location.search);
@@ -110,7 +112,10 @@
         .join(' ')
         .replace(/\s+/g, ' ')
         .trim();
-      if (text || url) searchRecords.push({ text: text || url, url, source });
+      if (text || url) {
+        const displayText = text || url;
+        searchRecords.push({ text: displayText, searchText: (displayText + ' ' + url).toLocaleLowerCase(), url, source });
+      }
     }
   }
 
@@ -134,12 +139,16 @@
     const csvText = await decompressGzip(compressed);
     indexCsv(csvText, url);
     loadedFiles++;
-    setStatus('Loaded ' + loadedFiles + ' of ' + totalFiles + ' database files…');
+    setStatus('Loaded ' + loadedFiles + ' of ' + totalFiles + ' files · ' + searchRecords.length.toLocaleString() + ' records' + (loadErrors ? ' · ' + loadErrors + ' errors' : '') + '.');
+    if (searchInput.value.trim()) filterData();
   }
 
   async function loadDatabase() {
     setStatus('Getting the list of database files from Hugging Face…');
-    const response = await fetch(HF_API, { headers: { Accept: 'application/json' } });
+    if ('caches' in window) {
+      try { cacheStore = await caches.open('sandstorm-search-database-v2'); } catch (_) {}
+    }
+    const response = await fetch(HF_API, { headers: { Accept: 'application/json' }, cache: 'no-cache' });
     if (!response.ok) throw new Error('Could not access the Hugging Face dataset (HTTP ' + response.status + ').');
     const metadata = await response.json();
     const files = (metadata.siblings || [])
@@ -152,7 +161,7 @@
     setStatus('Found ' + totalFiles + ' compressed files. Downloading and decompressing CSV data…');
 
     let nextIndex = 0;
-    const workerCount = Math.min(4, files.length);
+    const workerCount = Math.min(8, files.length);
     const errors = [];
     async function worker() {
       while (nextIndex < files.length) {
@@ -160,6 +169,7 @@
         try {
           await loadOneFile(files[index]);
         } catch (error) {
+          loadErrors++;
           errors.push(files[index] + ': ' + (error.message || String(error)));
         }
       }
@@ -217,8 +227,7 @@
     }
     const terms = query.split(/\s+/).filter(Boolean);
     const results = searchRecords.filter(record => {
-      const haystack = (record.text + ' ' + record.url).toLocaleLowerCase();
-      return terms.every(term => haystack.includes(term));
+      return terms.every(term => record.searchText.includes(term));
     });
     showResults(results);
     setStatus(results.length + ' matching result' + (results.length === 1 ? '' : 's') + '.');
